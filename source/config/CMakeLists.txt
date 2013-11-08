@@ -1,0 +1,8 @@
+
+INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+SET( CONFIG_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.c
+	)
+
+add_library(config STATIC ${CONFIG_SRC} )

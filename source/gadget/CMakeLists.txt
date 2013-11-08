@@ -1,0 +1,8 @@
+
+INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+SET( GADGET_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/src/gadget.c
+	)
+
+add_library(gadget STATIC ${GADGET_SRC} )

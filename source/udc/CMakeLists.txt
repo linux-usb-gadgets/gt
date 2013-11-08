@@ -1,0 +1,8 @@
+
+INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+SET( UDC_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/src/udc.c
+	)
+
+add_library(udc STATIC ${UDC_SRC} )

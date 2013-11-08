@@ -1,0 +1,8 @@
+
+INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+SET( FUNCTION_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/src/function.c
+	)
+
+add_library(function STATIC ${FUNCTION_SRC} )
