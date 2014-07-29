@@ -37,31 +37,32 @@ int gt_global_help(void *data)
 
 static inline const Command *gt_get_command_root_children(const Command *cmd)
 {
-	static Command commands[] =
-	{
-	{ "udc", NEXT, udc_parse, NULL, udc_help_func },
-	{ "settings", NEXT, command_parse, gt_settings_get_children, gt_settings_help },
-	{ "config", NEXT, command_parse, gt_config_get_children, gt_config_help },
-	{ "func", NEXT, command_parse, gt_func_get_children, gt_func_help },
-	{ NULL, AGAIN, command_parse, get_gadget_children, gt_global_help },
-	{ NULL, AGAIN, NULL, NULL, NULL } };
+	static Command commands[] = {
+		{ "udc", NEXT, udc_parse, NULL, udc_help_func },
+		{ "settings", NEXT, command_parse, gt_settings_get_children, gt_settings_help },
+		{ "config", NEXT, command_parse, gt_config_get_children, gt_config_help },
+		{ "func", NEXT, command_parse, gt_func_get_children, gt_func_help },
+		{ NULL, AGAIN, command_parse, get_gadget_children, gt_global_help },
+		{ NULL, AGAIN, NULL, NULL, NULL }
+	};
 
 	return commands;
 }
 
 static inline const Command *gt_get_command_root(const Command *cmd)
 {
-	static Command tool_names[] =
-	{
-	{ NULL, NEXT, command_parse, gt_get_command_root_children, gt_global_help },
-	{ NULL, AGAIN, NULL, NULL, NULL } };
+	static Command tool_names[] = {
+		{ NULL, NEXT, command_parse, gt_get_command_root_children, gt_global_help },
+		{ NULL, AGAIN, NULL, NULL, NULL }
+	};
 	return tool_names;
 }
 
 void gt_parse_commands(int argc, const char **argv, ExecutableCommand *exec)
 {
-	static Command command_pre_root =
-	{ NULL, AGAIN, command_parse, gt_get_command_root, gt_global_help };
+	static Command command_pre_root = {
+		NULL, AGAIN, command_parse, gt_get_command_root, gt_global_help
+	};
 
 	command_pre_root.parse(&command_pre_root, argc, argv, exec, NULL);
 }

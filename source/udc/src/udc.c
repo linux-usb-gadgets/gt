@@ -33,11 +33,10 @@ int udc_help_func(void *data)
 void udc_parse(const Command *cmd, int argc, const char **argv,
 		ExecutableCommand *exec, void * data)
 {
-	if(argc == 0) {
-		// udc should be run run without args
+	if(argc == 0)
+		// udc should be run without args
 		executable_command_set(exec, udc_func, data, NULL);
-	} else {
+	else
 		// Wrong syntax for udc command, let's print help
 		executable_command_set(exec, cmd->printHelp, data, NULL);
-	}
 }

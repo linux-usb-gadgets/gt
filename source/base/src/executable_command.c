@@ -24,10 +24,9 @@
 #include "executable_command.h"
 
 void executable_command_set(ExecutableCommand *to_set, ExecutableFunc exec,
-		void *data, CleanupFunc destructor)
+			    void *data, CleanupFunc destructor)
 {
-	if (to_set)
-	{
+	if (to_set) {
 		to_set->exec = exec;
 		to_set->data = data;
 		to_set->destructor = destructor;
@@ -36,10 +35,8 @@ void executable_command_set(ExecutableCommand *to_set, ExecutableFunc exec,
 
 void executable_command_clean(ExecutableCommand *to_clean)
 {
-	if (to_clean)
-	{
-		if (to_clean->destructor)
-		{
+	if (to_clean) {
+		if (to_clean->destructor) {
 			to_clean->destructor(to_clean->data);
 		}
 		to_clean->exec = NULL;

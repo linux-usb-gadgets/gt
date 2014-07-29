@@ -41,16 +41,13 @@ void command_parse(const Command *cmd, int argc, const char **argv,
 	bool found = false;
 
 	// If there is nothing more to parse it's error
-	if (argc == 0)
-	{
+	if (argc == 0) {
 		executable_command_set(exec, cmd->printHelp, data, NULL);
 		return;
 	}
 
-	while (next->parse)
-	{
-		if (name_matches(next->name, *argv))
-		{
+	while (next->parse) {
+		if (name_matches(next->name, *argv)) {
 			found = true;
 			break;
 		}
@@ -58,14 +55,10 @@ void command_parse(const Command *cmd, int argc, const char **argv,
 	}
 
 	if (found)
-	{
 		// We've found a suitable child so let's go deeper
-		next->parse(next, argc - next->distance, argv + next->distance, exec,
-				data);
-	}
+		next->parse(next, argc - next->distance, argv + next->distance,
+			    exec, data);
 	else
-	{
 		// We haven't found any suitable child so let's print help
 		executable_command_set(exec, cmd->printHelp, data, NULL);
-	}
 }
