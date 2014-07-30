@@ -1,28 +1,48 @@
 cmake_minimum_required(VERSION 2.8)
 
 #project name
-project (gadget-tool)
+PROJECT(gt)
 
-INCLUDE_DIRECTORIES( ${gadget-tool_SOURCE_DIR}/base/include )
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/base/include)
 
-SET(CMAKE_C_FLAGS -g)
+SET(PREFIX ${CMAKE_INSTALL_PREFIX})
+SET(BINDIR "${PREFIX}/bin")
 
-add_subdirectory(config)
-add_subdirectory(function)
-add_subdirectory(gadget)
-add_subdirectory(settings)
-add_subdirectory(udc)
-add_subdirectory(base)
+ADD_DEFINITIONS("-DPREFIX=\"${PREFIX}\"")
 
-SET( MAIN_SRC main.c)
+SET(PKG_MODULES
+        libusbg
+)
 
-add_executable( gt ${MAIN_SRC})
+INCLUDE(FindPkgConfig)
+pkg_check_modules(pkgs REQUIRED ${PKG_MODULES})
 
-target_link_libraries( gt
+FOREACH(flag ${pkgs_CFLAGS})
+        SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
+ENDFOREACH(flag)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -g -Wall")
+
+ADD_SUBDIRECTORY(config)
+ADD_SUBDIRECTORY(function)
+ADD_SUBDIRECTORY(gadget)
+ADD_SUBDIRECTORY(settings)
+ADD_SUBDIRECTORY(udc)
+ADD_SUBDIRECTORY(base)
+
+SET(MAIN_SRC main.c)
+
+ADD_EXECUTABLE(${PROJECT_NAME} ${MAIN_SRC})
+
+TARGET_LINK_LIBRARIES( gt
 	base
 	udc
 	config
 	function
 	gadget
 	settings
-	)
+	${pkgs_LDFLAGS}
+)
+
+INSTALL(TARGETS ${PROJECT_NAME} DESTINATION ${BINDIR})
+
