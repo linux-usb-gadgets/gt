@@ -418,6 +418,63 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
+struct gt_gadget_gadget_data {
+	const char *name;
+	int opts;
+};
+
+static int gt_gadget_gadget_func(void *data)
+{
+	struct gt_gadget_gadget_data *dt;
+
+	dt = (struct gt_gadget_gadget_data *)data;
+	printf("Gadget gadget called successfully. Not implemented.\n");
+	if (dt->name)
+		printf("name = %s, ", dt->name);
+	printf("recursive = %d, verbose = %d\n",
+		!!(dt->opts & GT_RECURSIVE), !!(dt->opts & GT_VERBOSE));
+	return 0;
+}
+
+static int gt_gadget_gadget_help(void *data)
+{
+	printf("Gadget gadget help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_gadget(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_gadget_gadget_data *dt;
+	int ind;
+	int avaible_opts = GT_RECURSIVE | GT_VERBOSE;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0)
+		goto out;
+
+	switch (argc - ind) {
+	case 0:
+		break;
+	case 1:
+		dt->name = argv[ind];
+		break;
+	default:
+		goto out;
+	}
+
+	executable_command_set(exec, gt_gadget_gadget_func, (void *)dt,
+		free);
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *get_gadget_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -430,7 +487,8 @@ const Command *get_gadget_children(const Command *cmd)
 			gt_gadget_enable_help},
 		{"disable", NEXT, gt_parse_gadget_disable, NULL,
 			gt_gadget_disable_help},
-//		{"gadget", parse_gadget_gadget, NULL, gadget_gadget_help_func},
+		{"gadget", NEXT, gt_parse_gadget_gadget, NULL,
+			gt_gadget_gadget_help},
 //		{"template", parse_gadget_template, NULL, gadget_template_help_func},
 //		{"load", parse_gadget_load, NULL, gadget_load_help_func},
 //		{"save", parse_gadget_save, NULL, gadget_load_help_func},
