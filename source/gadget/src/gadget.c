@@ -475,6 +475,235 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
+struct gt_gadget_load_data {
+	const char *name;
+	const char *gadget_name;
+	const char *file;
+	const char *path;
+	int opts;
+};
+
+static int gt_gadget_load_func(void *data)
+{
+	struct gt_gadget_load_data *dt;
+
+	dt = (struct gt_gadget_load_data *)data;
+	printf("Gadget load called successfully. Not implemented.\n");
+	if (dt->name)
+		printf("name = %s, ", dt->name);
+	if (dt->gadget_name)
+		printf("gadget = %s, ", dt->gadget_name);
+	if (dt->file)
+		printf("file %s, ", dt->file);
+	if (dt->path)
+		printf("path = %s, ", dt->path);
+
+	printf("off = %d, stdin = %d\n",
+		!!(dt->opts & GT_OFF), !!(dt->opts & GT_STDIN));
+
+	return 0;
+}
+
+static int gt_gadget_load_help(void *data)
+{
+	printf("Gadget load help\n");
+	return -1;
+}
+
+static void gt_parse_gadget_load(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	char c;
+	struct gt_gadget_load_data *dt;
+	struct option opts[] = {
+		{"off", no_argument, 0, 'o'},
+		{"file", required_argument, 0, 1},
+		{"stdin", no_argument, 0, 2},
+		{"path", required_argument, 0, 3},
+		{0, 0, 0, 0}
+	};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+	argv--;
+	argc++;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "o", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'o':
+			dt->opts |= GT_OFF;
+			break;
+		case 1:
+			if (dt->path || dt->opts & GT_STDIN)
+				goto out;
+			dt->file = optarg;
+			break;
+		case 2:
+			if (dt->path || dt->file)
+				goto out;
+			dt->opts |= GT_STDIN;
+			break;
+		case 3:
+			if (dt->file || dt->opts & GT_STDIN)
+				goto out;
+			dt->path = optarg;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	if (optind == argc || optind < argc - 2)
+		goto out;
+
+	dt->name = argv[optind++];
+	if (dt->opts & GT_STDIN || dt->file) {
+		dt->gadget_name = dt->name;
+		dt->name = NULL;
+		if (optind < argc)
+			goto out;
+	}
+
+	if (optind < argc)
+		dt->gadget_name = argv[optind++];
+
+	executable_command_set(exec, gt_gadget_load_func, (void *)dt, free);
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_gadget_save_data {
+	const char *gadget;
+	const char *name;
+	const char *file;
+	const char *path;
+	struct gt_setting *attrs;
+	int opts;
+};
+
+static void gt_gadget_save_destructor(void *data)
+{
+	struct gt_gadget_save_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_gadget_save_data *)data;
+	gt_setting_list_cleanup(dt->attrs);
+	free(dt);
+}
+
+static int gt_gadget_save_func(void *data)
+{
+	struct gt_gadget_save_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_gadget_save_data *)data;
+	printf("Gadget save called successfully. Not implemented\n");
+	if (dt->gadget)
+		printf("gadget = %s, ", dt->gadget);
+	if (dt->name)
+		printf("name = %s, ", dt->name);
+	if (dt->file)
+		printf("file = %s, ", dt->file);
+	if (dt->path)
+		printf("path = %s, ", dt->path);
+	printf("force = %d, stdout = %d",
+		!!(dt->opts & GT_FORCE), !!(dt->opts & GT_STDOUT));
+
+	ptr = dt->attrs;
+	while (ptr->variable) {
+		printf(", %s = %s", ptr->variable, ptr->value);
+		ptr++;
+	}
+
+	putchar('\n');
+	return 0;
+}
+
+static int gt_gadget_save_help(void *data)
+{
+	printf("Gadget save help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_save(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	int c;
+	struct gt_gadget_save_data *dt;
+	struct option opts[] = {
+		{"force", no_argument, 0, 'f'},
+		{"file", required_argument, 0, 1},
+		{"stdout", no_argument, 0, 2},
+		{"path", required_argument, 0, 3},
+		{0, 0, 0, 0}
+	};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+	argv--;
+	argc++;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "f", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'f':
+			dt->opts |= GT_FORCE;
+			break;
+		case 1:
+			if (dt->path || dt->opts & GT_STDOUT)
+				goto out;
+			dt->file = optarg;
+			break;
+		case 2:
+			if (dt->file || dt->path)
+				goto out;
+			dt->opts |= GT_STDOUT;
+			break;
+		case 3:
+			if (dt->file || dt->opts & GT_STDOUT)
+				goto out;
+			dt->path = optarg;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	if (optind == argc)
+		goto out;
+
+	dt->gadget = argv[optind++];
+
+	if(optind < argc
+	  && !dt->file
+	  && !(dt->opts & GT_STDOUT)
+	  && strchr(argv[optind], '=') == NULL)
+		dt->name = argv[optind++];
+
+	c = gt_parse_setting_list(&dt->attrs, argc - optind,
+			argv + optind);
+	if (c < 0)
+		goto out;
+
+	executable_command_set(exec, gt_gadget_save_func, (void *)dt,
+		gt_gadget_save_destructor);
+
+	return;
+out:
+	gt_gadget_save_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *get_gadget_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -489,9 +718,12 @@ const Command *get_gadget_children(const Command *cmd)
 			gt_gadget_disable_help},
 		{"gadget", NEXT, gt_parse_gadget_gadget, NULL,
 			gt_gadget_gadget_help},
-//		{"template", parse_gadget_template, NULL, gadget_template_help_func},
-//		{"load", parse_gadget_load, NULL, gadget_load_help_func},
-//		{"save", parse_gadget_save, NULL, gadget_load_help_func},
+//		{"template", AGAIN, gt_parse_gadget_template, NULL,
+//			gt_gadget_template_help},
+		{"load", NEXT, gt_parse_gadget_load, NULL,
+			gt_gadget_load_help},
+		{"save", NEXT, gt_parse_gadget_save, NULL,
+			gt_gadget_save_help},
 		CMD_LIST_END
 	};
 
