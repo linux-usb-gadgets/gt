@@ -28,9 +28,8 @@
 #include "parser.h"
 #include "executable_command.h"
 
-int main(int argc, const char **av)
+int main(int argc, char **argv)
 {
-	const char **argv = av;
 	int ret;
 	ExecutableCommand cmd;
 

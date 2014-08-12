@@ -58,7 +58,7 @@ static inline const Command *gt_get_command_root(const Command *cmd)
 	return tool_names;
 }
 
-void gt_parse_commands(int argc, const char **argv, ExecutableCommand *exec)
+void gt_parse_commands(int argc, char **argv, ExecutableCommand *exec)
 {
 	static Command command_pre_root = {
 		NULL, AGAIN, command_parse, gt_get_command_root, gt_global_help

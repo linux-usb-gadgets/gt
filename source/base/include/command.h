@@ -26,7 +26,7 @@
 
 struct command;
 
-typedef void (*ParseFunc)(const struct command *cmd, int, const char **,
+typedef void (*ParseFunc)(const struct command *cmd, int, char **,
 		ExecutableCommand *, void *);
 typedef const struct command *(*GetChildrenFunc)(const struct command *cmd);
 
@@ -74,7 +74,7 @@ typedef struct command
  * @param[out] exec structure to be filled in with suitable command
  * @param[in] data additional data
  */
-void command_parse(const Command *cmd, int argc, const char **argv,
+void command_parse(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void *data);
 
 #endif //__GADGET_TOOL_COMMAND_H__

@@ -31,6 +31,6 @@
  * @param[out] exec which will be set with suitable values for parsed command
  * execution
  */
-void gt_parse_commands(int argc, const char **argv, ExecutableCommand *exec);
+void gt_parse_commands(int argc, char **argv, ExecutableCommand *exec);
 
 #endif //__GADGET_TOOL_PARSER_H__

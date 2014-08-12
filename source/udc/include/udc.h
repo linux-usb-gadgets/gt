@@ -35,7 +35,7 @@ int udc_help_func(void *data);
  * where the last element is invalid structure filled
  * with NULLs.
  */
-void udc_parse(const Command *cmd, int argc, const char **argv,
+void udc_parse(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void * data);
 
 #endif //__GADGET_TOOL_UDC_UDC_PARSE_H__

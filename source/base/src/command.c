@@ -34,7 +34,7 @@ static inline bool name_matches(const char *candidate, const char *pattern)
 			|| (!candidate);
 }
 
-void command_parse(const Command *cmd, int argc, const char **argv,
+void command_parse(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void *data)
 {
 	const Command *next = cmd->getChildren(cmd);

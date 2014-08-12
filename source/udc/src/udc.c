@@ -30,7 +30,7 @@ int udc_help_func(void *data)
 	return -1;
 }
 
-void udc_parse(const Command *cmd, int argc, const char **argv,
+void udc_parse(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void * data)
 {
 	if(argc == 0)
