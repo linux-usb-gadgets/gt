@@ -29,7 +29,10 @@
 
 static inline bool name_matches(const char *candidate, const char *pattern)
 {
-	// If string is NULL it suits to all strings
+	// If pattern is NULL it suits only to NULL
+	if (!pattern)
+		return !candidate;
+	// If candidate is NULL it suits to all strings
 	return (candidate && (strcmp(candidate, pattern) == 0))
 			|| (!candidate);
 }
@@ -39,12 +42,6 @@ void command_parse(const Command *cmd, int argc, char **argv,
 {
 	const Command *next = cmd->getChildren(cmd);
 	bool found = false;
-
-	// If there is nothing more to parse it's error
-	if (argc == 0) {
-		executable_command_set(exec, cmd->printHelp, data, NULL);
-		return;
-	}
 
 	while (next->parse) {
 		if (name_matches(next->name, *argv)) {
