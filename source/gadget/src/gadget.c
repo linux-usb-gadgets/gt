@@ -286,6 +286,138 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
+struct gt_gadget_enable_data {
+	const char *gadget;
+	const char *udc;
+};
+
+static int gt_gadget_enable_func(void *data)
+{
+	struct gt_gadget_enable_data *dt;
+
+	dt = (struct gt_gadget_enable_data *)data;
+	printf("Gadget enable called successfully. Not implemented.\n");
+	if (dt->gadget)
+		printf("gadget = %s, ", dt->gadget);
+	if (dt->udc)
+		printf("udc = %s", dt->udc);
+	putchar('\n');
+	return 0;
+}
+
+static int gt_gadget_enable_help(void *data)
+{
+	printf("Gadget enable help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_enable(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_gadget_enable_data *dt;
+	char c;
+	struct option opts[] = {
+		{"gadget", required_argument, 0, 'g'},
+		{"udc", required_argument, 0, 'u'},
+		{0, 0, 0, 0}
+	};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+	argv--;
+	argc++;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "g:u:", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'g':
+			dt->gadget = optarg;
+			break;
+		case 'u':
+			dt->udc = optarg;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	executable_command_set(exec, gt_gadget_enable_func, (void *)dt, free);
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_gadget_disable_data {
+	const char *gadget;
+	const char *udc;
+};
+
+static int gt_gadget_disable_func(void *data)
+{
+	struct gt_gadget_disable_data *dt;
+
+	dt = (struct gt_gadget_disable_data *)data;
+	printf("Gadget disable called successfully. Not implemented.\n");
+	if (dt->gadget)
+		printf("gadget = %s, ", dt->gadget);
+	if (dt->udc)
+		printf("udc = %s", dt->udc);
+	putchar('\n');
+	return 0;
+}
+
+static int gt_gadget_disable_help(void *data)
+{
+	printf("Gadget disable help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_disable(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_gadget_disable_data *dt;
+	char c;
+	struct option opts[] = {
+		{"udc", required_argument, 0, 'u'},
+		{0, 0, 0, 0}
+	};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+	argv--;
+	argc++;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "u:", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'u':
+			dt->udc = optarg;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	if (optind < argc - 1 || (dt->udc && optind < argc)) {
+		printf("Too many arguments\n");
+		goto out;
+	}
+
+	dt->gadget = argv[optind];
+	executable_command_set(exec, gt_gadget_disable_func, (void *)dt, free);
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *get_gadget_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -294,9 +426,10 @@ const Command *get_gadget_children(const Command *cmd)
 		{"rm", NEXT, gt_parse_gadget_rm, NULL, gt_gadget_rm_help},
 		{"get", NEXT, gt_parse_gadget_get, NULL, gt_gadget_get_help},
 		{"set", NEXT, gt_parse_gadget_set, NULL, gt_gadget_set_help},
-//		{"enable", AGAIN, gt_parse_gadget_enable, NULL,
-//			gt_gadget_enable_help},
-//		{"disable", parse_gadget_disable, NULL, gadget_disable_help_func},
+		{"enable", NEXT, gt_parse_gadget_enable, NULL,
+			gt_gadget_enable_help},
+		{"disable", NEXT, gt_parse_gadget_disable, NULL,
+			gt_gadget_disable_help},
 //		{"gadget", parse_gadget_gadget, NULL, gadget_gadget_help_func},
 //		{"template", parse_gadget_template, NULL, gadget_template_help_func},
 //		{"load", parse_gadget_load, NULL, gadget_load_help_func},
