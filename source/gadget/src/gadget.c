@@ -704,6 +704,248 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
+struct gt_gadget_template_data {
+	const char *name;
+	int opts;
+};
+
+static int gt_gadget_template_func(void *data)
+{
+	struct gt_gadget_template_data *dt;
+
+	dt = (struct gt_gadget_template_data *)data;
+	printf("Gadget template called successfully. Not implemented.\n");
+	if (dt->name)
+		printf("name = %s, ", dt->name);
+       	printf("verbose = %d, recursive = %d\n",
+		!!(dt->opts & GT_VERBOSE), !!(dt->opts & GT_RECURSIVE));
+	return 0;
+}
+
+static int gt_gadget_template_help(void *data)
+{
+	printf("Gadget template help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_template(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	int ind;
+	struct gt_gadget_template_data *dt;
+	int avaible_opts = GT_VERBOSE | GT_RECURSIVE;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0)
+		goto out;
+
+	if (argc - ind > 1)
+		goto out;
+
+	if (argv[ind])
+		dt->name = argv[ind];
+
+	executable_command_set(exec, gt_gadget_template_func, (void *)dt,
+		free);
+
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+static int gt_gadget_template_rm_func(void *data)
+{
+	char *dt;
+
+	dt = (char *)data;
+	printf("Gadget template rm called successfully. Not implemented.\n");
+	printf("name = %s\n", dt);
+	return 0;
+}
+
+static int gt_gadget_template_rm_help(void *data)
+{
+	printf("Gadget template rm help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_template_rm(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	const char *dt = NULL;
+
+	if (argc != 1)
+		goto out;
+
+	dt = argv[0];
+	executable_command_set(exec, gt_gadget_template_rm_func, (void *)dt,
+		NULL);
+
+	return;
+out:
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_gadget_template_set_data {
+	const char *name;
+	struct gt_setting *attr;
+};
+
+static void gt_gadget_template_set_destructor(void *data)
+{
+	struct gt_gadget_template_set_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_gadget_template_set_data *)data;
+	gt_setting_list_cleanup(dt->attr);
+	free(dt);
+}
+
+static int gt_gadget_template_set_func(void *data)
+{
+	struct gt_gadget_template_set_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_gadget_template_set_data *)data;
+	printf("Gadget template set called successfully. Not implemened.\n");
+	printf("name = %s", dt->name);
+	ptr = dt->attr;
+	while (ptr->variable) {
+		printf(", %s = %s", ptr->variable, ptr->value);
+		ptr++;
+	}
+
+	putchar('\n');
+	return 0;
+}
+
+static int gt_gadget_template_set_help(void *data)
+{
+	printf("Gadget template set help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_template_set(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	int tmp;
+	struct gt_gadget_template_set_data *dt;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	if (argc != 2)
+		goto out;
+
+	dt->name = argv[0];
+	tmp = gt_parse_setting_list(&dt->attr, argc-1, argv+1);
+	if (tmp < 0)
+		goto out;
+
+	executable_command_set(exec, gt_gadget_template_set_func, (void *)dt,
+		gt_gadget_template_set_destructor);
+
+	return;
+out:
+	gt_gadget_template_set_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_gadget_template_get_data {
+	const char *name;
+	const char **attr;
+};
+
+static void gt_gadget_template_get_destructor(void *data)
+{
+	struct gt_gadget_template_get_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_gadget_template_get_data *)data;
+	free(dt->attr);
+	free(dt);
+}
+
+static int gt_gadget_template_get_func(void *data)
+{
+	struct gt_gadget_template_get_data *dt;
+	const char **ptr;
+
+	dt = (struct gt_gadget_template_get_data *)data;
+	printf("Gadget template get called successfully. Not implemented.\n");
+	printf("name = %s, attr = ", dt->name);
+	ptr = dt->attr;
+	while (*ptr) {
+		printf("%s, ", *ptr);
+		ptr++;
+	}
+
+	putchar('\n');
+	return 0;
+}
+
+static int gt_gadget_template_get_help(void *data)
+{
+	printf("Gadget template get help.\n");
+	return -1;
+}
+
+static void gt_parse_gadget_template_get(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	int i;
+	struct gt_gadget_template_get_data *dt;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	if (argc < 1)
+		goto out;
+
+	dt->name = argv[0];
+	dt->attr = calloc(argc, sizeof(char *));
+	if (dt->attr == NULL)
+		goto out;
+
+	argv++;
+	argc--;
+	for (i = 0; i < argc; i++)
+		dt->attr[i] = argv[i];
+
+	executable_command_set(exec, gt_gadget_template_get_func, (void *)dt,
+		gt_gadget_template_get_destructor);
+
+	return;
+out:
+	gt_gadget_template_get_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+const Command *get_gadget_template_children(const Command *cmd)
+{
+	static Command commands[] = {
+		{"get", NEXT, gt_parse_gadget_template_get, NULL,
+			gt_gadget_template_get_help},
+		{"set", NEXT, gt_parse_gadget_template_set, NULL,
+			gt_gadget_template_set_help},
+		{"rm", NEXT, gt_parse_gadget_template_rm, NULL,
+			gt_gadget_template_rm_help},
+		{NULL, AGAIN, gt_parse_gadget_template, NULL,
+			gt_gadget_template_help},
+		CMD_LIST_END
+	};
+
+	return commands;
+}
+
 const Command *get_gadget_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -718,8 +960,8 @@ const Command *get_gadget_children(const Command *cmd)
 			gt_gadget_disable_help},
 		{"gadget", NEXT, gt_parse_gadget_gadget, NULL,
 			gt_gadget_gadget_help},
-//		{"template", AGAIN, gt_parse_gadget_template, NULL,
-//			gt_gadget_template_help},
+		{"template", NEXT, command_parse, get_gadget_template_children,
+			gt_gadget_template_help},
 		{"load", NEXT, gt_parse_gadget_load, NULL,
 			gt_gadget_load_help},
 		{"save", NEXT, gt_parse_gadget_save, NULL,
