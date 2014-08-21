@@ -63,6 +63,9 @@ typedef struct command
 	ExecutableFunc printHelp;
 } Command;
 
+/* Macro indicating end of list of commands */
+#define CMD_LIST_END {NULL, AGAIN, NULL, NULL, NULL}
+
 /**
  * @brief Looks for a suitable child and recursively parses it.
  * @details Used convention says that when string is NULL it matches

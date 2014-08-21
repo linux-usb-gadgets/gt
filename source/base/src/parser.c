@@ -50,7 +50,7 @@ static inline const Command *gt_get_command_root_children(const Command *cmd)
 		{ "config", NEXT, command_parse, gt_config_get_children, gt_config_help },
 		{ "func", NEXT, command_parse, gt_func_get_children, gt_func_help },
 		{ NULL, AGAIN, command_parse, get_gadget_children, gt_global_help },
-		{ NULL, AGAIN, NULL, NULL, NULL }
+		CMD_LIST_END
 	};
 
 	return commands;
@@ -60,7 +60,7 @@ static inline const Command *gt_get_command_root(const Command *cmd)
 {
 	static Command tool_names[] = {
 		{ NULL, NEXT, command_parse, gt_get_command_root_children, gt_global_help },
-		{ NULL, AGAIN, NULL, NULL, NULL }
+		CMD_LIST_END
 	};
 	return tool_names;
 }
