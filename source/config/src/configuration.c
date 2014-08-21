@@ -298,6 +298,64 @@ out:
 	gt_config_set_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
+
+struct gt_config_config_data {
+	const char *gadget;
+	const char *config;
+	int opts;
+};
+
+static int gt_config_config_func(void *data)
+{
+	struct gt_config_config_data *dt;
+
+	dt = (struct gt_config_config_data *)data;
+	printf("Config config called successfully. Not implemented.\n");
+	printf("gadget = %s", dt->gadget);
+	if (dt->config)
+		printf(", config = %s", dt->config);
+	printf(", verbose = %d, recursive = %d\n",
+		!!(dt->opts & GT_VERBOSE), !!(dt->opts & GT_RECURSIVE));
+
+	return 0;
+}
+
+static int gt_config_config_help(void *data)
+{
+	printf("Config config help.\n");
+	return -1;
+}
+
+static void gt_parse_config_config(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	int ind;
+	struct gt_config_config_data *dt = NULL;
+	int avaible_opts = GT_VERBOSE | GT_RECURSIVE;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0)
+		goto out;
+
+	if (ind == argc || argc - ind > 2)
+		goto out;
+
+	dt->gadget = argv[ind++];
+	if (ind < argc)
+		dt->config = argv[ind++];
+
+	executable_command_set(exec, gt_config_config_func, (void *)dt, free);
+
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *gt_config_get_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -311,8 +369,8 @@ const Command *gt_config_get_children(const Command *cmd)
 //		{"template", NEXT, command_parse,
 //			gt_config_template_get_children,
 //			gt_config_template_help},
-//		{NULL, PREV, gt_parse_config_config, NULL,
-//			gt_config_config_help},
+		{NULL, AGAIN, gt_parse_config_config, NULL,
+			gt_config_config_help},
 		CMD_LIST_END
 	};
 
