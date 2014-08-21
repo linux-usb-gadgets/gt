@@ -158,14 +158,154 @@ out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
+
+struct gt_config_get_data {
+	const char *gadget;
+	const char *config;
+	const char **attrs;
+};
+
+static void gt_config_get_destructor(void *data)
+{
+	struct gt_config_get_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_config_get_data *)data;
+	free(dt->attrs);
+	free(dt);
+}
+
+static int gt_config_get_func(void *data)
+{
+	struct gt_config_get_data *dt;
+	const char **ptr;
+
+	dt = (struct gt_config_get_data *)data;
+	printf("Config get called successfully. Not implemented.\n");
+	printf("gadget = %s, config = %s, attrs = ",
+		dt->gadget, dt->config);
+	ptr = dt->attrs;
+	while (*ptr) {
+		printf("%s, ", *ptr);
+		ptr++;
+	}
+	putchar('\n');
+	return 0;
+}
+
+static int gt_config_get_help(void *data)
+{
+	printf("Config get help.\n");
+	return -1;
+}
+
+static void gt_parse_config_get(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_config_get_data *dt = NULL;
+	int i;
+
+	if (argc < 2)
+		goto out;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	dt->gadget = argv[0];
+	dt->config = argv[1];
+
+	dt->attrs = calloc(argc - 1, sizeof(char *));
+	if (dt->attrs == NULL)
+		goto out;
+
+	argv += 2;
+	for (i = 0; argv[i]; i++)
+		dt->attrs[i] = argv[i];
+
+	executable_command_set(exec, gt_config_get_func, (void *)dt,
+			gt_config_get_destructor);
+	return;
+out:
+	gt_config_get_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_config_set_data {
+	const char *gadget;
+	const char *config;
+	struct gt_setting *attrs;
+};
+
+static void gt_config_set_destructor(void *data)
+{
+	struct gt_config_set_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_config_set_data *)data;
+	gt_setting_list_cleanup(dt->attrs);
+	free(dt);
+}
+
+static int gt_config_set_func(void *data)
+{
+	struct gt_config_set_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_config_set_data *)data;
+	printf("Config set called successfully. Not implemented.\n");
+	printf("gadget = %s, config = %s", dt->gadget, dt->config);
+	ptr = dt->attrs;
+	while (ptr->variable) {
+		printf(", %s = %s", ptr->variable, ptr->value);
+		ptr++;
+	}
+
+	putchar('\n');
+	return 0;
+}
+
+static int gt_config_set_help(void *data)
+{
+	printf("Config set help.\n");
+	return -1;
+}
+
+static void gt_parse_config_set(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_config_set_data *dt = NULL;
+	int tmp;
+
+	if (argc < 3)
+		goto out;
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	dt->gadget = argv[0];
+	dt->config = argv[1];
+	tmp = gt_parse_setting_list(&dt->attrs, argc - 2, argv + 2);
+	if (tmp < 0)
+		goto out;
+
+	executable_command_set(exec, gt_config_set_func, (void *)dt,
+			gt_config_set_destructor);
+	return;
+out:
+	gt_config_set_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
 const Command *gt_config_get_children(const Command *cmd)
 {
 	static Command commands[] = {
 		{"create", NEXT, gt_parse_config_create, NULL,
 		 gt_config_create_help},
 		{"rm", NEXT, gt_parse_config_rm, NULL, gt_config_rm_help},
-//		{"get", AGAIN, gt_parse_config_get, NULL, gt_config_get_help},
-//		{"set", AGAIN, gt_parse_config_set, NULL, gt_config_set_help},
+		{"get", NEXT, gt_parse_config_get, NULL, gt_config_get_help},
+		{"set", NEXT, gt_parse_config_set, NULL, gt_config_set_help},
 //		{"add", AGAIN, gt_parse_config_add, NULL, gt_config_add_help},
 //		{"del", AGAIN, gt_parse_config_del, NULL, gt_config_del_help},
 //		{"template", NEXT, command_parse,
