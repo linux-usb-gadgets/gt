@@ -356,6 +356,156 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
+struct gt_config_add_data {
+	const char *gadget;
+	const char *config;
+	char *type;
+	char *instance;
+};
+
+static void gt_config_add_destructor(void *data)
+{
+	struct gt_config_add_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_config_add_data *)data;
+	free(dt->type);
+	free(dt->instance);
+	free(dt);
+}
+
+static int gt_config_add_func(void *data)
+{
+	struct gt_config_add_data *dt;
+
+	dt = (struct gt_config_add_data *)data;
+	printf("Config add called successfully. Not implemented.\n");
+	printf("gadget = %s, conf = %s, type = %s, instance = %s\n",
+			dt->gadget, dt->config, dt->type, dt->instance);
+	return 0;
+}
+
+static int gt_config_add_help(void *data)
+{
+	printf("Config add help.\n");
+	return -1;
+}
+
+static void gt_parse_config_add(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_config_add_data *dt = NULL;
+	int tmp;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	switch (argc) {
+	case 3:
+		tmp = gt_parse_function_name(&dt->type, &dt->instance,
+				argv[2]);
+		if (tmp < 0)
+			goto out;
+		break;
+	case 4:
+		dt->type = strdup(argv[2]);
+		dt->instance = strdup(argv[3]);
+		break;
+	default:
+		goto out;
+	}
+
+	dt->gadget = argv[0];
+	dt->config = argv[1];
+
+	executable_command_set(exec, gt_config_add_func, (void *)dt,
+			gt_config_add_destructor);
+
+	return;
+out:
+	gt_config_add_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_config_del_data {
+	const char *gadget;
+	const char *config;
+	char *type;
+	char *instance;
+};
+
+static void gt_config_del_destructor(void *data)
+{
+	struct gt_config_del_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_config_del_data *)data;
+	free(dt->type);
+	free(dt->instance);
+	free(dt);
+}
+
+static int gt_config_del_func(void *data)
+{
+	struct gt_config_del_data *dt;
+
+	dt = (struct gt_config_del_data *)data;
+	printf("Config del called successfully. Not implemented.\n");
+	printf("gadget = %s, conf = %s, type = %s, instance = %s\n",
+			dt->gadget, dt->config, dt->type, dt->instance);
+	return 0;
+}
+
+static int gt_config_del_help(void *data)
+{
+	printf("Config del help.\n");
+	return -1;
+}
+
+static void gt_parse_config_del(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_config_add_data *dt = NULL;
+	int tmp;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	switch (argc) {
+	case 3:
+		tmp = gt_parse_function_name(&dt->type, &dt->instance,
+				argv[2]);
+		if (tmp < 0)
+			goto out;
+		break;
+	case 4:
+		dt->type = strdup(argv[2]);
+		if (dt->type == NULL)
+			goto out;
+		dt->instance = strdup(argv[3]);
+		if (dt->instance == NULL)
+			goto out;
+		break;
+	default:
+		goto out;
+	}
+
+	dt->gadget = argv[0];
+	dt->config = argv[1];
+
+	executable_command_set(exec, gt_config_del_func, (void *)dt,
+			gt_config_del_destructor);
+
+	return;
+out:
+	gt_config_del_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *gt_config_get_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -364,8 +514,8 @@ const Command *gt_config_get_children(const Command *cmd)
 		{"rm", NEXT, gt_parse_config_rm, NULL, gt_config_rm_help},
 		{"get", NEXT, gt_parse_config_get, NULL, gt_config_get_help},
 		{"set", NEXT, gt_parse_config_set, NULL, gt_config_set_help},
-//		{"add", AGAIN, gt_parse_config_add, NULL, gt_config_add_help},
-//		{"del", AGAIN, gt_parse_config_del, NULL, gt_config_del_help},
+		{"add", NEXT, gt_parse_config_add, NULL, gt_config_add_help},
+		{"del", NEXT, gt_parse_config_del, NULL, gt_config_del_help},
 //		{"template", NEXT, command_parse,
 //			gt_config_template_get_children,
 //			gt_config_template_help},
