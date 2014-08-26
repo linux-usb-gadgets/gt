@@ -155,5 +155,27 @@ expect_failure "save gadget --path";
 expect_failure "save gadget --file";
 expect_failure "save";
 
+expect_success "template name" "name=name, verbose=0, recursive=0";
+expect_success "template" "verbose=0, recursive=0";
+expect_success "template --verbose --recursive" "verbose=1, recursive=1";
+expect_success "template --verbose name" "name=name, verbose=1, recursive=0";
+expect_success "template --recursive name" "name=name, verbose=0, recursive=1";
+
+expect_failure "template -f";
+expect_failure "template -o";
+expect_failure "template name1 name2";
+
+expect_success "template get name" "name=name, attr=";
+expect_success "template get name attr" "name=name, attr=attr,";
+
+expect_success "template set name attr=val" "name=name, attr=val";
+expect_success "template rm name" "name=name";
+
+expect_failure "template get"
+expect_failure "template set name"
+expect_failure "template set name attr"
+expect_failure "template set name attr1=val1 attr2"
+expect_failure "template rm"
+expect_failure "template rm name1 name2"
 
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
