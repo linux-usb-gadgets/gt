@@ -99,4 +99,25 @@ expect_failure "set gadget";
 expect_failure "set gadget attr equals val";
 expect_failure "set";
 
+expect_success "enable" "";
+expect_success "enable --gadget=gadget --udc=udc" "gadget=gadget, udc=udc";
+expect_success "enable --gadget=gadget1" "gadget=gadget1,";
+expect_success "enable --udc=udc1" "udc=udc1";
+expect_success "disable" "";
+expect_success "disable gadget1" "gadget=gadget1,";
+expect_success "disable --udc=udc1" "udc=udc1";
+
+expect_failure "disable gadget1 --udc=udc";
+expect_failure "enable -f";
+expect_failure "enable -v";
+expect_failure "enable -r";
+expect_failure "enable -o";
+expect_failure "disable gadget1 sth";
+expect_failure "disable gadget1 --gadget=gadget2";
+expect_failure "disable gadget1 -f";
+expect_failure "disable gadget1 -v";
+expect_failure "disable gadget1 -r";
+expect_failure "disable gadget1 -o";
+
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
