@@ -167,7 +167,6 @@ expect_failure "template name1 name2";
 
 expect_success "template get name" "name=name, attr=";
 expect_success "template get name attr" "name=name, attr=attr,";
-
 expect_success "template set name attr=val" "name=name, attr=val";
 expect_success "template rm name" "name=name";
 
@@ -177,5 +176,22 @@ expect_failure "template set name attr"
 expect_failure "template set name attr1=val1 attr2"
 expect_failure "template rm"
 expect_failure "template rm name1 name2"
+
+expect_success "config create gadget1 config1"\
+	"gadget=gadget1, config=config1, force=0";
+expect_success "config create gadget1 config1 attr=val"\
+	"gadget=gadget1, config=config1, force=0, attr=val";
+expect_success "config create -f gadget1 config1"\
+	"gadget=gadget1, config=config1, force=1";
+expect_success "config rm gadget config"\
+	"gadget=gadget, config=config, force=0, recursive=0";
+expect_success "config rm -rf gadget config"\
+	"gadget=gadget, config=config, force=1, recursive=1";
+
+expect_failure "config create -r gadget1 config1";
+expect_failure "config create -f gadget1";
+expect_failure "config rm gadget";
+expect_failure "config rm -rfv gadget config";
+expect_failure "config rm gadget config function";
 
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
