@@ -239,4 +239,24 @@ expect_failure "config del gadget1 conf1 func";
 expect_failure "config del";
 expect_failure "config del gadget1 conf type name more";
 
+expect_success "config template"\
+	"verbose=0, recursive=0";
+expect_success "config template name"\
+	"name=name, verbose=0, recursive=0";
+expect_success "config template get name"\
+	"name=name, attr=";
+expect_success "config template set name attr=val"\
+	"name=name, attr=val";
+expect_success "config template rm name"\
+	"name=name";
+
+expect_failure "config template name1 name2";
+expect_failure "config template get";
+expect_failure "config template --force";
+expect_failure "config template -f name";
+expect_failure "config template set name";
+expect_failure "config tempalte set name attr";
+expect_failure "config template rm name1 name2";
+expect_failure "config template set";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
