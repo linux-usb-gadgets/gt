@@ -194,4 +194,17 @@ expect_failure "config rm gadget";
 expect_failure "config rm -rfv gadget config";
 expect_failure "config rm gadget config function";
 
+expect_success "config get gadget config"\
+	"gadget=gadget, config=config, attrs=";
+expect_success "config get gadget config attr1 attr2"\
+	"gadget=gadget, config=config, attrs=attr1,attr2,";
+expect_success "config set gadget config attr=val"\
+	"gadget=gadget, config=config, attr=val";
+expect_success "config set gadget config attr1=val1 attr2=val2"\
+	"gadget=gadget, config=config, attr1=val1, attr2=val2";
+
+expect_failure "config get gadget";
+expect_failure "config set gadget1";
+expect_failure "config set gadget1 config1 func1";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
