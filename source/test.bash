@@ -219,4 +219,24 @@ expect_success "config -r gadget1 config1"\
 expect_failure "config gadget1 config1 func1";
 expect_failure "config gadget1 -f";
 
+expect_success "config add gadget1 conf1 type name"\
+	"gadget=gadget1, conf=conf1, type=type, instance=name";
+expect_success "config add gadget1 conf1 type.name"\
+	"gadget=gadget1, conf=conf1, type=type, instance=name";
+expect_success "config del gadget1 conf1 type name"\
+	"gadget=gadget1, conf=conf1, type=type, instance=name";
+expect_success "config del gadget1 conf1 type.name"\
+	"gadget=gadget1, conf=conf1, type=type, instance=name";
+
+expect_failure "config add gadget1 conf1";
+expect_failure "config add gadget1";
+expect_failure "config add gadget1 conf1 func";
+expect_failure "config add";
+expect_failure "config add gadget1 conf type name more";
+expect_failure "config del gadget1 conf1";
+expect_failure "config del gadget1";
+expect_failure "config del gadget1 conf1 func";
+expect_failure "config del";
+expect_failure "config del gadget1 conf type name more";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
