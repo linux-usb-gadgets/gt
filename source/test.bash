@@ -127,4 +127,33 @@ expect_success "gadget gadget4 -vr" "name=gadget4, recursive=1, verbose=1";
 expect_failure "gadget gadget -f";
 expect_failure "gadget gadget gadget";
 
+expect_success "load name gadget1" "name=name, gadget=gadget1, off=0, stdin=0";
+expect_success "load name gadget1 --off" "name=name, gadget=gadget1, off=1, stdin=0";
+expect_success "load name --stdin" "gadget=name, off=0, stdin=1";
+expect_success "load name gadget1 --path=path"\
+	"name=name, gadget=gadget1, path=path, off=0, stdin=0";
+expect_success "save gadget1 name" "gadget=gadget1, name=name, force=0, stdout=0";
+expect_success "save gadget1 --file=file"\
+	"gadget=gadget1, file=file, force=0, stdout=0";
+expect_success "save gadget1 --stdout attr=val"\
+	"gadget=gadget1, force=0, stdout=1, attr=val";
+expect_success "save gadget1 name --path=path"\
+	"gadget=gadget1, name=name, path=path, force=0, stdout=0";
+expect_success "save gadget1 name -f"\
+	"gadget=gadget1, name=name, force=1, stdout=0";
+
+expect_failure "load name --file=file1 --stdin";
+expect_failure "load name --stdin --path=path1";
+expect_failure "load name --path=path1 --file=file1";
+expect_failure "load name --path";
+expect_failure "load name --file";
+expect_failure "load";
+expect_failure "save gadget --file=file1 --stdin";
+expect_failure "save gadget --stdin --path=path1";
+expect_failure "save gadget --path=path1 --file=file1";
+expect_failure "save gadget --path";
+expect_failure "save gadget --file";
+expect_failure "save";
+
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
