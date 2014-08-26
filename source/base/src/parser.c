@@ -19,6 +19,7 @@
  * @brief Implementation of functions used for parsing command line options.
  */
 
+#include "common.h"
 #include "parser.h"
 #include "command.h"
 #include "udc.h"
@@ -28,6 +29,8 @@
 #include "settings.h"
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 int gt_global_help(void *data)
 {
@@ -65,4 +68,85 @@ void gt_parse_commands(int argc, char **argv, ExecutableCommand *exec)
 	};
 
 	command_pre_root.parse(&command_pre_root, argc, argv, exec, NULL);
+}
+
+static int gt_split_by_char(char **first, char **second, const char *str,
+		char delimiter)
+{
+	const char *ptr = str;
+	ptr = strchr(str, delimiter);
+
+	if (ptr == NULL){
+		printf("Wrong argument: expected %c in %s\n", delimiter, str);
+		return -1;
+	}
+
+	*first = strndup(str, ptr - str);
+	if (*first == NULL)
+		return -1;
+
+	*second = strdup(ptr+1);
+	if (*second == NULL) {
+		free(*first);
+		return -1;
+	}
+
+	return 0;
+}
+
+int gt_parse_setting(struct gt_setting *dst, const char *str)
+{
+	return gt_split_by_char(&dst->variable, &dst->value, str, '=');
+}
+
+int gt_parse_setting_list(struct gt_setting **dst, int argc, char **argv)
+{
+	int i, tmp;
+	struct gt_setting *res;
+
+	res = calloc(argc + 1, sizeof(*res));
+	if (res == NULL)
+		goto out;
+
+	for (i = 0; i < argc; i++) {
+		tmp = gt_parse_setting(&res[i], argv[i]);
+		if (tmp < 0)
+			goto out;
+	}
+
+	*dst = res;
+	return argc;
+out:
+	free(res);
+	return -1;
+}
+
+void gt_setting_cleanup(void *data)
+{
+	struct gt_setting *dt;
+
+	if (data == NULL)
+		return;
+
+	dt = (struct gt_setting *)data;
+	free(dt->variable);
+	free(dt->value);
+}
+
+void gt_setting_list_cleanup(void *data)
+{
+	struct gt_setting *dt;
+
+	if (data == NULL)
+		return;
+
+	for (dt = (struct gt_setting *)data; dt->variable; dt++)
+		gt_setting_cleanup(dt);
+
+	free(data);
+}
+
+int gt_parse_function_name(char **type, char **instance, const char *str)
+{
+	return gt_split_by_char(type, instance, str, '.');
 }

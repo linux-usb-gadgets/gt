@@ -33,4 +33,52 @@
  */
 void gt_parse_commands(int argc, char **argv, ExecutableCommand *exec);
 
+/**
+ * @brief structure for storing name of variable and it's value
+ **/
+struct gt_setting {
+	char *variable;
+	char *value;
+};
+
+/**
+ * @brief Parse string in format <variable>=<value> and fills given structure
+ * with extracted values.
+ * @param[out] dst Pointer to result
+ * @param[in] str string to parse
+ * @return Error code if failed or 0 if succeed
+ **/
+int gt_parse_setting(struct gt_setting *dst, const char *str);
+
+/**
+ * @brief Parse settings list from argv
+ * @param[out] dst Pointer to null-terminated array of settings. Allocated
+ * inside this function, should be freed by caller.
+ * @param[in] argc Number of arguments passed in argv
+ * @param[in] argv List of strings containg settings
+ **/
+int gt_parse_setting_list(struct gt_setting **dst, int argc, char **argv);
+
+/**
+ * @brief Cleanup function for setting structure.
+ * @details Free only content of setting (i.e. strings)
+ * @param[in] data pointer to structure which should be destroyed
+ **/
+void gt_setting_cleanup(void *data);
+
+/**
+ * @brief Destroy array of settings
+ * @details Free content of array and array itself.
+ * @param[in] data Null-terminated array of settings
+ */
+void gt_setting_list_cleanup(void *data);
+
+/**
+ * @brief Split string in format <type>.<instance> into two strings
+ * @param[out] type pointer to string with <type>
+ * @param[out] instance pointer to string with <instance>
+ * @param[in] str string to be parsed
+ **/
+int gt_parse_function_name(char **type, char **instance, const char *str);
+
 #endif //__GADGET_TOOL_PARSER_H__
