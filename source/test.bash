@@ -119,5 +119,12 @@ expect_failure "disable gadget1 -v";
 expect_failure "disable gadget1 -r";
 expect_failure "disable gadget1 -o";
 
+expect_success "gadget gadget2" "name=gadget2, recursive=0, verbose=0";
+expect_success "gadget gadget1 -v" "name=gadget1, recursive=0, verbose=1";
+expect_success "gadget gadget3 -r" "name=gadget3, recursive=1, verbose=0";
+expect_success "gadget gadget4 -vr" "name=gadget4, recursive=1, verbose=1";
+
+expect_failure "gadget gadget -f";
+expect_failure "gadget gadget gadget";
 
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
