@@ -24,4 +24,6 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
+#define ARRAY_SIZE(array) sizeof(array)/sizeof(*array)
+
 #endif //__GADGET_TOOL_COMMON_H__

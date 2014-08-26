@@ -31,6 +31,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <ctype.h>
+
 
 int gt_global_help(void *data)
 {
@@ -149,4 +153,74 @@ void gt_setting_list_cleanup(void *data)
 int gt_parse_function_name(char **type, char **instance, const char *str)
 {
 	return gt_split_by_char(type, instance, str, '.');
+}
+
+int gt_get_options(int *optmask, int allowed_opts, int argc, char **argv)
+{
+	static struct {
+		int flag;
+		struct option option;
+	} known_opts[] = {
+		{GT_FORCE, {"force", no_argument, 0, 'f'}},
+		{GT_VERBOSE, {"verbose", no_argument, 0, 'v'}},
+		{GT_RECURSIVE, {"recursive", no_argument, 0, 'r'}},
+		{GT_OFF, {"off", no_argument, 0, 'o'}},
+		{GT_STDIN, {"stdin", no_argument, 0, 1}},
+		{GT_STDIN, {"stdout", no_argument, 0, 2}},
+		{0, {NULL, 0, 0, 0}}
+	};
+
+	struct option opts[ARRAY_SIZE(known_opts)];
+	char optstring[ARRAY_SIZE(known_opts)];
+	int count = 0;
+	int short_count = 0;
+	int i;
+	int c;
+
+	for (i = 0; known_opts[i].flag; i++) {
+		if (allowed_opts & known_opts[i].flag) {
+			opts[count] = known_opts[i].option;
+			if (isalnum(opts[count].val))
+				optstring[short_count++] = opts[count].val;
+			count++;
+		}
+	}
+
+	/* Assign last element, which must be zero-filled */
+	opts[count] = known_opts[i].option;
+	optstring[short_count] = '\0';
+
+	*optmask = 0;
+	argc++;
+	argv--;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, optstring, opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'f':
+			*optmask |= GT_FORCE;
+			break;
+		case 'r':
+			*optmask |= GT_RECURSIVE;
+			break;
+		case 'v':
+			*optmask |= GT_VERBOSE;
+			break;
+		case 'o':
+			*optmask |= GT_OFF;
+			break;
+		case 1:
+			*optmask |= GT_STDIN;
+			break;
+		case 2:
+			*optmask |= GT_STDOUT;
+			break;
+		default:
+			return -1;
+		}
+	}
+
+	return optind-1;
 }

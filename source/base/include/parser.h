@@ -74,6 +74,28 @@ void gt_setting_cleanup(void *data);
 void gt_setting_list_cleanup(void *data);
 
 /**
+ * Definitions of options flags
+ */
+enum gt_option_flags {
+	GT_FORCE = 1,
+	GT_RECURSIVE = 2,
+	GT_VERBOSE = 4,
+	GT_OFF = 8,
+	GT_STDIN = 16,
+	GT_STDOUT = 32
+};
+
+/**
+ * @brief Get known options flags from given argv
+ * @param[out] optmask mask containing all found options
+ * @param[in] allowed_opts mask with allowed options
+ * @param[in] argc number of given arguments
+ * @param[in] argv list of arguments
+ * @return index of first non-option argument, negative number otherwise
+ **/
+int gt_get_options(int *optmask, int allowed_opts, int argc, char **argv);
+
+/**
  * @brief Split string in format <type>.<instance> into two strings
  * @param[out] type pointer to string with <type>
  * @param[out] instance pointer to string with <instance>
