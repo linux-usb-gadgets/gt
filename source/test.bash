@@ -26,27 +26,27 @@ SUCCESS_COUNT=0;
 function expect_success {
 	if ! $GT $1 > test.out; then
 		ERROR_COUNT=$((ERROR_COUNT + 1));
-		echo "[FAILED] gt $1 -- gt failed";
+		echo "$(tput setaf 1)[FAILED]$(tput sgr0) gt $1 -- gt failed";
 	elif ! diff -w <(tail -n+2 test.out) <(echo "$2") &> /dev/null; then
 		ERROR_COUNT=$((ERROR_COUNT + 1));
-		echo "[FAILED] gt $1 -- unexpected output";
+		echo "$(tput setaf 1)[FAILED]$(tput sgr0) gt $1 -- unexpected output";
 		echo "Expected:";
 		echo "$2";
 		echo "Got: ";
 		tail -n+2 test.out;
 	else
 		SUCCESS_COUNT=$((SUCCESS_COUNT + 1));
-		echo "[OK] gt $1 -- succeed";
+		echo "$(tput setaf 2)[OK]$(tput sgr0) gt $1 -- succeed";
 	fi
 }
 
 function expect_failure {
 	if $GT $1 &> /dev/null; then
 		ERROR_COUNT=$((ERROR_COUNT + 1));
-		echo "[FAILED] gt $1 -- expected failure";
+		echo "$(tput setaf 1)[FAILED]$(tput sgr0) gt $1 -- expected failure";
 	else
 		SUCCESS_COUNT=$((SUCCESS_COUNT + 1));
-		echo "[OK] gt $1 -- failed as expected";
+		echo "$(tput setaf 2)[OK]$(tput sgr0) gt $1 -- failed as expected";
 	fi
 
 }
