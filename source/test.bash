@@ -70,4 +70,19 @@ expect_failure "settings detach badopt badval";
 expect_failure "settings detach lookup-path and more";
 expect_failure "settings detach lookup-path";
 
+expect_success "create gadget1" "name=gadget1, force=0";
+expect_success "create -f gadget2" "name=gadget2, force=1";
+expect_success "create -f gadget2 attr=val" "name=gadget2, force=1, attr=val";
+expect_success "create --force gadget3 attr1=val1 attr2=val2"\
+	"name=gadget3, force=1, attr1=val1, attr2=val2";
+expect_success "rm gadget1" "name=gadget1, force=0, recursive=0";
+expect_success "rm -r gadget2" "name=gadget2, force=0, recursive=1";
+expect_success "rm -f gadget3" "name=gadget3, force=1, recursive=0";
+expect_success "rm -rf gadget4" "name=gadget4, force=1, recursive=1";
+
+expect_failure "create gadget1 --verbose";
+expect_failure "create gadget1 and more";
+expect_failure "create";
+expect_failure "rm -rf gadget gadget";
+expect_failure "rm";
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
