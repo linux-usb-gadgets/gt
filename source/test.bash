@@ -85,4 +85,18 @@ expect_failure "create gadget1 and more";
 expect_failure "create";
 expect_failure "rm -rf gadget gadget";
 expect_failure "rm";
+
+expect_success "get gadget1" "name=gadget1, attrs=";
+expect_success "get gadget1 attr" "name=gadget1, attrs=attr,";
+expect_success "get gadget2 attr1 attr2 attr3 attr4" \
+	"name=gadget2, attrs=attr1, attr2, attr3, attr4,";
+expect_success "set gadget attr=val" "name=gadget, attr=val";
+expect_success "set gadget attr1=val1 attr2=val2"\
+	"name=gadget, attr1=val1, attr2=val2";
+
+expect_failure "get";
+expect_failure "set gadget";
+expect_failure "set gadget attr equals val";
+expect_failure "set";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
