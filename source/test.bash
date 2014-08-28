@@ -259,4 +259,51 @@ expect_failure "config tempalte set name attr";
 expect_failure "config template rm name1 name2";
 expect_failure "config template set";
 
+expect_success "config load name1 gadget1 config1"\
+	"name=name1, gadget=gadget1, config=config1, recursive=0, force=0, stdin=0";
+expect_success "config load name gadget"\
+	"name=name, gadget=gadget, recursive=0, force=0, stdin=0";
+expect_success "config load name gadget -f"\
+	"name=name, gadget=gadget, recursive=0, force=1, stdin=0";
+expect_success "config load name1 gadget1 --stdin"\
+	"gadget=gadget1, config=name1, recursive=0, force=0, stdin=1";
+expect_success "config load name1 gadget1 --file=file1"\
+	"gadget=gadget1, config=name1, file=file1, recursive=0, force=0, stdin=0";
+expect_success "config load -r name1 gadget1 config1"\
+	"name=name1, gadget=gadget1, config=config1, recursive=1, force=0, stdin=0";
+
+expect_failure "config load";
+expect_failure "config load name1";
+expect_failure "config load name1 gadget1 config1 -v";
+expect_failure "config load name1 gadget1 config1 --stdin --path=path1";
+expect_failure "config load name gadget config1 --stdin";
+expect_failure "config load name gadget conf --file=file1";
+expect_failure "config load name gadget --path=p --file=f";
+expect_failure "config load name gadget conf --stdin";
+
+expect_success "config save gadget1 conf name"\
+	"gadget=gadget1, config=conf, name=name, force=0, stdout=0";
+expect_success "config save gadget1 conf name attr=val"\
+	"gadget=gadget1, config=conf, name=name, force=0, stdout=0, attr=val";
+expect_success "config save gadget1 conf name attr1=val1 attr2=val2"\
+	"gadget=gadget1, config=conf, name=name, force=0, stdout=0, attr1=val1, attr2=val2";
+expect_success "config save gadget1 conf name -f"\
+	"gadget=gadget1, config=conf, name=name, force=1, stdout=0";
+expect_success "config save gadget1 conf --stdout"\
+	"gadget=gadget1, config=conf, force=0, stdout=1";
+expect_success "config save gadget1 conf"\
+	"gadget=gadget1, config=conf, force=0, stdout=0";
+expect_success "config save gadget1 conf --file=file1"\
+	"gadget=gadget1, config=conf, file=file1, force=0, stdout=0";
+expect_success "config save gadget1 conf name --path=path1"\
+	"gadget=gadget1, config=conf, name=name, path=path1, force=0, stdout=0";
+
+expect_failure "config save gadget1 conf name --stdout";
+expect_failure "config save";
+expect_failure "config save gadget1 conf --stdout --file=file";
+expect_failure "config save gadget1 conf --file=file --path=p";
+expect_failure "config save gadget1 conf --path=p --stdout";
+expect_failure "config save gadget1 conf --path";
+expect_failure "config save gadget1 conf --file";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
