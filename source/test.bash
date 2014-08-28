@@ -5,7 +5,7 @@ then
 	if [ -f "$1" ]
 	then
 		GT="$1";
-	elif [ which $1 &> /dev/null ]
+	elif [ which "$1" &> /dev/null ]
 	then
 		GT="$1";
 	else
@@ -305,5 +305,42 @@ expect_failure "config save gadget1 conf --file=file --path=p";
 expect_failure "config save gadget1 conf --path=p --stdout";
 expect_failure "config save gadget1 conf --path";
 expect_failure "config save gadget1 conf --file";
+
+expect_success "func create gadget type name"\
+	"gadget=gadget, type=type, name=name, force=0";
+expect_success "func create gadget type.name"\
+	"gadget=gadget, type=type, name=name, force=0";
+expect_success "func create -f gadget type name"\
+	"gadget=gadget, type=type, name=name, force=1";
+expect_success "func create -f gadget type.name"\
+	"gadget=gadget, type=type, name=name, force=1";
+expect_success "func create gadget type1.name1 attr=val"\
+	"gadget=gadget, type=type1, name=name1, force=0, attr=val";
+expect_success "func create gadget type1.name1 attr1=val1 attr2=val2"\
+	"gadget=gadget, type=type1, name=name1, force=0, attr1=val1, attr2=val2";
+
+expect_failure "func create gadget type.name -v";
+expect_failure "func create gadget type.name -r";
+expect_failure "func create gadget";
+expect_failure "func create gadget type name attrval";
+expect_failure "func create gadget typename";
+
+expect_success "func rm gadget t.n"\
+	"gadget=gadget, type=t, name=n, recursive=0, force=0";
+expect_success "func rm gadget1 t n"\
+	"gadget=gadget1, type=t, name=n, recursive=0, force=0";
+expect_success "func rm -r gadget1 type1.name1"\
+	"gadget=gadget1, type=type1, name=name1, recursive=1, force=0";
+expect_success "func rm -f gadget2 type2.name2"\
+	"gadget=gadget2, type=type2, name=name2, recursive=0, force=1";
+expect_success "func rm -rf gadget3 type3 name3"\
+	"gadget=gadget3, type=type3, name=name3, recursive=1, force=1";
+
+expect_failure "func rm";
+expect_failure "func rm gadget1";
+expect_failure "func rm gadget1 function";
+expect_failure "func rm gadget1 type name attr=val";
+expect_failure "func rm gadget1 -v type.name";
+expect_failure "func rm gadget1 -o type.name";
 
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
