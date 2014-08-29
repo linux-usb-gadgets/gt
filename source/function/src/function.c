@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <getopt.h>
 
 #include "function.h"
 #include "common.h"
@@ -438,6 +440,244 @@ out:
 	executable_command_set(exec, gt_func_func_help, data, NULL);
 }
 
+struct gt_func_load_data {
+	const char *name;
+	const char *gadget;
+	const char *func;
+	const char *file;
+	const char *path;
+	int opts;
+};
+
+static int gt_func_load_func(void *data)
+{
+	struct gt_func_load_data *dt;
+
+	dt = (struct gt_func_load_data *)data;
+	printf("Func load called succesfully. Not implemented.\n");
+	if (dt->name)
+		printf("name=%s, ", dt->name);
+	if (dt->gadget)
+		printf("gadget=%s, ", dt->gadget);
+	if (dt->func)
+		printf("func=%s, ", dt->func);
+	if (dt->file)
+		printf("file=%s, ", dt->file);
+	if (dt->path)
+		printf("path=%s, ", dt->path);
+	printf("force=%d, stdin=%d\n", !!(dt->opts & GT_FORCE),
+			!!(dt->opts & GT_STDIN));
+
+	return 0;
+}
+
+static int gt_func_load_help(void *data)
+{
+	printf("Func load help.\n");
+	return -1;
+}
+
+static void gt_parse_func_load(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_load_data *dt = NULL;
+	int c;
+	struct option opts[] = {
+			{"force", no_argument, 0, 'f'},
+			{"recursive", no_argument, 0, 'r'},
+			{"file", required_argument, 0, 1},
+			{"stdin", no_argument, 0, 2},
+			{"path", required_argument, 0, 3},
+			{0, 0, 0, 0}
+		};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	argv--;
+	argc++;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "f", opts, &opt_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'f':
+			dt->opts |= GT_FORCE;
+			break;
+		case 1:
+			if (dt->path || dt->opts & GT_STDIN)
+				goto out;
+			dt->file = optarg;
+			break;
+		case 2:
+			if (dt->path || dt->file)
+				goto out;
+			dt->opts |= GT_STDIN;
+			break;
+		case 3:
+			if (dt->file || dt->opts & GT_STDIN)
+				goto out;
+			dt->path = optarg;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	if (argc - optind < 2 || argc - optind > 3)
+		goto out;
+
+	dt->name = argv[optind++];
+	dt->gadget = argv[optind++];
+	if (dt->opts & GT_STDIN || dt->file) {
+		dt->func = dt->name;
+		dt->name = NULL;
+		if (optind < argc)
+			goto out;
+	}
+
+	if (optind < argc)
+		dt->func = argv[optind];
+
+	executable_command_set(exec, gt_func_load_func, (void *)dt, free);
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_func_save_data {
+	const char *gadget;
+	const char *func;
+	const char *name;
+	const char *file;
+	const char *path;
+	int opts;
+	struct gt_setting *attrs;
+};
+
+static void gt_func_save_destructor(void *data)
+{
+	struct gt_func_save_data *dt;
+
+	if (data == NULL)
+		return;
+
+	dt = (struct gt_func_save_data *)data;
+	gt_setting_list_cleanup(dt->attrs);
+	free(dt);
+}
+
+static int gt_func_save_func(void *data)
+{
+	struct gt_func_save_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_func_save_data *)data;
+
+	printf("Func save called successfully. Not implemented.\n");
+	if (dt->gadget)
+		printf("gadget=%s, ", dt->gadget);
+	if (dt->func)
+		printf("func=%s, ", dt->func);
+	if (dt->name)
+		printf("name=%s, ", dt->name);
+	if (dt->file)
+		printf("file=%s, ", dt->file);
+	if (dt->path)
+		printf("path=%s, ", dt->path);
+	printf("force=%d, stdout=%d", !!(dt->opts & GT_FORCE),
+			!!(dt->opts & GT_STDOUT));
+
+	for (ptr = dt->attrs; ptr->variable; ptr++)
+		printf(", %s=%s", ptr->variable, ptr->value);
+	putchar('\n');
+
+	return 0;
+}
+
+static int gt_func_save_help(void *data)
+{
+	printf("Func save help.\n");
+	return -1;
+}
+
+static void gt_parse_func_save(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_save_data *dt = NULL;
+	int c;
+	struct option opts[] = {
+			{"force", no_argument, 0, 'f'},
+			{"file", required_argument, 0, 1},
+			{"stdout", no_argument, 0, 2},
+			{"path", required_argument, 0, 3},
+			{0, 0, 0, 0}
+		};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	argv--;
+	argc++;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "f", opts, &opt_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'f':
+			dt->opts |= GT_FORCE;
+			break;
+		case 1:
+			if (dt->path || dt->opts & GT_STDOUT)
+				goto out;
+			dt->file = optarg;
+			break;
+		case 2:
+			if (dt->path || dt->file)
+				goto out;
+			dt->opts |= GT_STDOUT;
+			break;
+		case 3:
+			if (dt->file || dt->opts & GT_STDOUT)
+				goto out;
+			dt->path = optarg;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	if (argc - optind < 2)
+		goto out;
+
+	dt->gadget = argv[optind++];
+	dt->func = argv[optind++];
+	if (optind < argc
+	   && !dt->file
+	   && !(dt->opts & GT_STDOUT)
+	   && strchr(argv[optind], '=') == NULL)
+		dt->name = argv[optind++];
+
+	c = gt_parse_setting_list(&dt->attrs, argc - optind, argv + optind);
+	if (c < 0)
+		goto out;
+
+	executable_command_set(exec, gt_func_save_func, (void *)dt,
+			gt_func_save_destructor);
+
+	return;
+out:
+	gt_func_save_destructor(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 int gt_func_help(void *data)
 {
 	printf("Function help function\n");
@@ -452,8 +692,8 @@ const Command *gt_func_get_children(const Command *cmd)
 		{"rm", NEXT, gt_parse_func_rm, NULL, gt_func_rm_help},
 		{"get", NEXT, gt_parse_func_get, NULL, gt_func_get_help},
 		{"set", NEXT, gt_parse_func_set, NULL, gt_func_set_help},
-//		{"load", AGAIN, gt_parse_func_load, NULL, gt_func_load_help},
-//		{"save", AGAIN, gt_parse_func_save, NULL, gt_func_save_help}.
+		{"load", NEXT, gt_parse_func_load, NULL, gt_func_load_help},
+		{"save", NEXT, gt_parse_func_save, NULL, gt_func_save_help},
 //		{"template", AGAIN, parse_command,
 //			gt_func_template_get_children, gt_func_template_help},
 		{NULL, AGAIN, gt_parse_func_func, NULL, gt_func_func_help},
