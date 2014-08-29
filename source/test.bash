@@ -343,4 +343,29 @@ expect_failure "func rm gadget1 type name attr=val";
 expect_failure "func rm gadget1 -v type.name";
 expect_failure "func rm gadget1 -o type.name";
 
+expect_success "func get gadget1 type1.name1"\
+	"gadget=gadget1, type=type1, name=name1, attrs=";
+expect_success "func get gadget1 type1.name1 attr1 attr2"\
+	"gadget=gadget1, type=type1, name=name1, attrs=attr1,attr2,";
+expect_success "func get gadget1 type1 name1 attr"\
+	"gadget=gadget1, type=type1, name=name1, attrs=attr,";
+
+expect_failure "func get gadget1";
+expect_failure "func get";
+expect_failure "func get gadget function";
+
+expect_success "func set gadget1 type1 name1"\
+	"gadget=gadget1, type=type1, name=name1";
+expect_success "func set gadget1 type1.name1"\
+	"gadget=gadget1, type=type1, name=name1";
+expect_success "func set gadget1 type1.name1 attr1=val1 attr2=val2"\
+	"gadget=gadget1, type=type1, name=name1, attr1=val1, attr2=val2";
+expect_success "func set gadget1 type1 name1 attr=val"\
+	"gadget=gadget1, type=type1, name=name1, attr=val";
+
+expect_failure "func set";
+expect_failure "func set gadget1";
+expect_failure "func set gadget1 function":
+expect_failure "func set gadget1 type name attr";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
