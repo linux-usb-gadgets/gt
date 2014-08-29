@@ -361,6 +361,83 @@ out:
 	executable_command_set(exec, gt_func_get_help, data, NULL);
 }
 
+struct gt_func_func_data {
+	const char *gadget;
+	char *type;
+	char *name;
+	int opts;
+};
+
+static void gt_func_func_destructor(void *data)
+{
+	struct gt_func_func_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_func_func_data *)data;
+	free(dt->type);
+	free(dt->name);
+	free(dt);
+}
+
+static int gt_func_func_func(void *data)
+{
+	struct gt_func_func_data *dt;
+
+	dt = (struct gt_func_func_data *)data;
+	printf("Func func called successfully. Not implemented.\n");
+	printf("gadget=%s", dt->gadget);
+	if (dt->type)
+		printf(", type=%s", dt->type);
+	if (dt->name)
+		printf(", name=%s", dt->name);
+	printf(", verbose=%d\n", !!(dt->opts & GT_VERBOSE));
+
+	return 0;
+}
+
+static int gt_func_func_help(void *data)
+{
+	printf("Func func help.\n");
+	return -1;
+}
+
+static void gt_parse_func_func(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_func_data *dt = NULL;
+	int ind;
+	int tmp;
+	int avaible_opts = GT_VERBOSE;
+
+	if (argc < 1)
+		goto out;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0)
+		goto out;
+
+	dt->gadget = argv[ind++];
+	if (argc > ind) {
+		tmp = gt_get_func_name(&dt->type, &dt->name, argc - ind, argv + ind);
+		if (tmp < 0)
+			goto out;
+		if (ind + tmp != argc)
+			goto out;
+	}
+
+	executable_command_set(exec, gt_func_func_func, (void *)dt,
+			gt_func_func_destructor);
+	return;
+out:
+	gt_func_func_destructor(dt);
+	executable_command_set(exec, gt_func_func_help, data, NULL);
+}
+
 int gt_func_help(void *data)
 {
 	printf("Function help function\n");
@@ -379,7 +456,7 @@ const Command *gt_func_get_children(const Command *cmd)
 //		{"save", AGAIN, gt_parse_func_save, NULL, gt_func_save_help}.
 //		{"template", AGAIN, parse_command,
 //			gt_func_template_get_children, gt_func_template_help},
-//		{NULL, PREV, gt_parse_func_func, NULL, gt_func_func_help},
+		{NULL, AGAIN, gt_parse_func_func, NULL, gt_func_func_help},
 		{NULL, AGAIN, NULL, NULL, NULL}
 	};
 	return commands;
