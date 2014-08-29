@@ -206,6 +206,160 @@ out:
 	executable_command_set(exec, gt_func_rm_help, data, NULL);
 }
 
+struct gt_func_get_data {
+	const char *gadget;
+	char *type;
+	char *name;
+	const char **attrs;
+};
+
+static void gt_func_get_destructor(void *data)
+{
+	struct gt_func_get_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_func_get_data *)data;
+	free(dt->type);
+	free(dt->name);
+	free(dt->attrs);
+	free(dt);
+}
+
+static int gt_func_get_func(void *data)
+{
+	struct gt_func_get_data *dt;
+	const char **ptr;
+
+	dt = (struct gt_func_get_data *)data;
+	printf("Func get called successfully. Not implemented.\n");
+	printf("gadget=%s, type=%s, name=%s, attrs=",
+		dt->gadget, dt->type, dt->name);
+
+	for (ptr = dt->attrs; *ptr; ptr++)
+		printf("%s, ", *ptr);
+	putchar('\n');
+
+	return 0;
+}
+
+static int gt_func_get_help(void *data)
+{
+	printf("Func get help.\n");
+	return -1;
+}
+
+static void gt_parse_func_get(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_get_data *dt = NULL;
+	int tmp;
+	int i;
+
+	if (argc < 2)
+		goto out;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	dt->gadget = argv[0];
+
+	tmp = gt_get_func_name(&dt->type, &dt->name, argc - 1, argv + 1);
+	if (tmp < 0)
+		goto out;
+
+	dt->attrs = calloc(argc - tmp, sizeof(char *));
+	if (dt->attrs == NULL)
+		goto out;
+
+	argv += tmp + 1;
+	for (i = 0; argv[i]; i++)
+		dt->attrs[i] = argv[i];
+
+	executable_command_set(exec, gt_func_get_func, (void *)dt,
+			gt_func_get_destructor);
+
+	return;
+out:
+	gt_func_get_destructor(dt);
+	executable_command_set(exec, gt_func_get_help, data, NULL);
+}
+
+struct gt_func_set_data {
+	const char *gadget;
+	char *type;
+	char *name;
+	struct gt_setting *attrs;
+};
+
+static void gt_func_set_destructor(void *data)
+{
+	struct gt_func_set_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_func_set_data *)data;
+	free(dt->type);
+	free(dt->name);
+	gt_setting_list_cleanup(dt->attrs);
+	free(dt);
+}
+
+static int gt_func_set_func(void *data)
+{
+	struct gt_func_set_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_func_set_data *)data;
+	printf("Func set called successfully. Not implemented.\n");
+	printf("gadget=%s, type=%s, name=%s", dt->gadget, dt->type, dt->name);
+
+	for (ptr = dt->attrs; ptr->variable; ptr++)
+		printf(", %s=%s", ptr->variable, ptr->value);
+	putchar('\n');
+
+	return 0;
+}
+
+static int gt_func_set_help(void *data)
+{
+	printf("Func set help.\n");
+	return -1;
+}
+
+static void gt_parse_func_set(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_set_data *dt = NULL;
+	int tmp;
+
+	if (argc < 2)
+		goto out;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	dt->gadget = argv[0];
+	tmp = gt_get_func_name(&dt->type, &dt->name, --argc, ++argv);
+	if (tmp < 0)
+		goto out;
+
+	argc -= tmp;
+	argv += tmp;
+	tmp = gt_parse_setting_list(&dt->attrs, argc, argv);
+	if (tmp < 0)
+		goto out;
+
+	executable_command_set(exec, gt_func_set_func, (void *)dt,
+			gt_func_set_destructor);
+
+	return;
+out:
+	gt_func_set_destructor(dt);
+	executable_command_set(exec, gt_func_get_help, data, NULL);
+}
 
 int gt_func_help(void *data)
 {
@@ -219,8 +373,8 @@ const Command *gt_func_get_children(const Command *cmd)
 		{"create", NEXT, gt_parse_func_create, NULL,
 			gt_func_create_help},
 		{"rm", NEXT, gt_parse_func_rm, NULL, gt_func_rm_help},
-//		{"get", AGAIN, gt_parse_func_get, NULL, gt_func_get_help},
-//		{"set", AGAIN, gt_parse_func_set, NULL, gt_func_set_help},
+		{"get", NEXT, gt_parse_func_get, NULL, gt_func_get_help},
+		{"set", NEXT, gt_parse_func_set, NULL, gt_func_set_help},
 //		{"load", AGAIN, gt_parse_func_load, NULL, gt_func_load_help},
 //		{"save", AGAIN, gt_parse_func_save, NULL, gt_func_save_help}.
 //		{"template", AGAIN, parse_command,
