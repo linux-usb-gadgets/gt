@@ -368,4 +368,21 @@ expect_failure "func set gadget1";
 expect_failure "func set gadget1 function":
 expect_failure "func set gadget1 type name attr";
 
+expect_success "func gadget1" "gadget=gadget1, verbose=0";
+expect_success "func gadget1 type name"\
+	"gadget=gadget1, type=type, name=name, verbose=0";
+expect_success "func gadget1 type.name"\
+	"gadget=gadget1, type=type, name=name, verbose=0";
+expect_success "func -v gadget1" "gadget=gadget1, verbose=1";
+expect_success "func --verbose gadget1 type name"\
+	"gadget=gadget1, type=type, name=name, verbose=1";
+expect_success "func gadget1 -v type.name"\
+	"gadget=gadget1, type=type, name=name, verbose=1";
+
+expect_failure "func gadget1 function";
+expect_failure "func gadget2 -f";
+expect_failure "func gadget3 -r";
+expect_failure "func gadget4 -o";
+expect_failure "func gadget5 func func func";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
