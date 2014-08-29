@@ -385,4 +385,44 @@ expect_failure "func gadget3 -r";
 expect_failure "func gadget4 -o";
 expect_failure "func gadget5 func func func";
 
+expect_success "func load name1 gadget1 func1"\
+	"name=name1, gadget=gadget1, func=func1, force=0, stdin=0";
+expect_success "func load name1 gadget1 func1 -f"\
+	"name=name1, gadget=gadget1, func=func1, force=1, stdin=0";
+expect_success "func load name1 gadget1 --stdin"\
+	"gadget=gadget1, func=name1, force=0, stdin=1";
+expect_success "func load name1 gadget1 --file=file1"\
+	"gadget=gadget1, func=name1, file=file1, force=0, stdin=0";
+
+expect_failure "func load name gadget --file";
+expect_failure "func load name gadget --path";
+expect_failure "func load name1 gadget1 --stdin --file=f";
+expect_failure "func load name1 gadget1 --file=f --path=p";
+expect_failure "func load name2 gadget2 --path=p --stdin";
+expect_failure "func load name1 gadget1 --stdin --file=f --path=p";
+expect_failure "func load name1 gadget1 func1 --stdin";
+
+expect_success "func save gadget1 function1 name1"\
+	"gadget=gadget1, func=function1, name=name1, force=0, stdout=0";
+expect_success "func save gadget1 func1 name1 attr1=val1 attr2=val2"\
+	"gadget=gadget1, func=func1, name=name1, force=0, stdout=0, attr1=val1, attr2=val2";
+expect_success "func save gadget1 func1 attr1=val1"\
+	"gadget=gadget1, func=func1, force=0, stdout=0, attr1=val1";
+expect_success "func save gadget1 func1 --stdout"\
+	"gadget=gadget1, func=func1, force=0, stdout=1";
+expect_success "func save gadget1 func1 -f"\
+	"gadget=gadget1, func=func1, force=1, stdout=0";
+expect_success "func save gadget1 func1 name1 -f attr1=val1 attr2=val2"\
+	"gadget=gadget1, func=func1, name=name1, force=1, stdout=0, attr1=val1, attr2=val2";
+expect_success "func save gadget1 func1 --file=f attr1=val1 attr2=val2"\
+	"gadget=gadget1, func=func1, file=f, force=0, stdout=0, attr1=val1, attr2=val2";
+expect_success "func save gad1 fun1 nam1 --path=p --force"\
+	"gadget=gad1, func=fun1, name=nam1, path=p, force=1, stdout=0";
+
+expect_failure "func save";
+expect_failure "func save gadget1";
+expect_failure "func save gadget1 func1 name1 --file=f";
+expect_failure "func save gadget1 func1 name1 --stdout";
+expect_failure "func save gadget1 fucn1 --path=p --file=f";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
