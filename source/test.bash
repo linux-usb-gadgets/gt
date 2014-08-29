@@ -425,4 +425,35 @@ expect_failure "func save gadget1 func1 name1 --file=f";
 expect_failure "func save gadget1 func1 name1 --stdout";
 expect_failure "func save gadget1 fucn1 --path=p --file=f";
 
+expect_success "func template" "verbose=0";
+expect_success "func template name1" "name=name1, verbose=0";
+expect_success "func template -v" "verbose=1";
+expect_success "func template -v name1" "name=name1, verbose=1";
+
+expect_failure "func template name1 name2";
+expect_failure "func template -r";
+expect_failure "func template -f";
+
+expect_success "func template get name1" "name=name1, attrs=";
+expect_success "func template get name2 attr" "name=name2, attrs=attr,";
+expect_success "func template get name3 attr1 attr2 attr3"\
+	"name=name3, attrs=attr1, attr2, attr3,";
+
+expect_failure "func template get";
+
+expect_success "func template set name1 attr1=val1"\
+	"name=name1, attr1=val1";
+expect_success "func template set name2 attr1=val1 attr2=val2 attr3=val3"\
+	"name=name2, attr1=val1, attr2=val2, attr3=val3";
+
+expect_failure "func template set";
+expect_failure "func template set name1";
+expect_failure "func template set name1 attr";
+expect_failure "func template set name1 attr1=val1 attr2val2";
+
+expect_success "func template rm name1" "name=name1";
+
+expect_failure "func template rm";
+expect_failure "func template rm name1 name2";
+
 echo "Testing finished, $SUCCESS_COUNT tests passed, $ERROR_COUNT failed.";
