@@ -684,6 +684,241 @@ int gt_func_help(void *data)
 	return -1;
 }
 
+struct gt_func_template_data {
+	const char *name;
+	int opts;
+};
+
+static int gt_func_template_func(void *data)
+{
+	struct gt_func_template_data *dt;
+
+	dt = (struct gt_func_template_data *)data;
+	printf("Func template called successfully. Not implemented.\n");
+	if (dt->name)
+		printf("name=%s, ", dt->name);
+	printf("verbose=%d\n", !!(dt->opts & GT_VERBOSE));
+
+	return 0;
+}
+
+static int gt_func_template_help(void *data)
+{
+	printf("Func template help.\n");
+	return -1;
+}
+
+static void gt_parse_func_template(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_template_data *dt;
+	int avaible_opts = GT_VERBOSE;
+	int ind;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0)
+		goto out;
+
+	if (argc - ind > 1)
+		goto out;
+
+	dt->name = argv[ind++];
+
+	executable_command_set(exec, gt_func_template_func, (void *)dt, free);
+	return;
+out:
+	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_func_template_get_data {
+	const char *name;
+	const char **attrs;
+};
+
+static void gt_func_template_get_destructor(void *data)
+{
+	struct gt_func_template_get_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_func_template_get_data *)data;
+	free(dt->attrs);
+	free(dt);
+}
+
+static int gt_func_template_get_func(void *data)
+{
+	struct gt_func_template_get_data *dt;
+	const char **ptr;
+
+	dt = (struct gt_func_template_get_data *)data;
+	printf("Func template get called successfully. Not implemented.\n");
+	printf("name=%s, attrs=", dt->name);
+	for (ptr = dt->attrs; *ptr; ptr++)
+		printf("%s, ", *ptr);
+	putchar('\n');
+
+	return 0;
+}
+
+static int gt_func_template_get_help(void *data)
+{
+	printf("Func template get help called successfully.\n");
+	return -1;
+}
+
+static void gt_parse_func_template_get(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_template_get_data *dt = NULL;
+	int i;
+
+	if (argc < 1)
+		goto out;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	dt->name = argv[0];
+
+	dt->attrs = calloc(argc, sizeof(char *));
+	if (dt->attrs == NULL)
+		goto out;
+
+	argv += 1;
+	for (i = 0; argv[i]; i++)
+		dt->attrs[i] = argv[i];
+
+	executable_command_set(exec, gt_func_template_get_func, (void *)dt,
+			gt_func_template_get_destructor);
+	return;
+
+out:
+	gt_func_template_get_destructor(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+struct gt_func_template_set_data {
+	const char *name;
+	struct gt_setting *attrs;
+};
+
+static void gt_func_template_set_destructor(void *data)
+{
+	struct gt_func_template_set_data *dt;
+
+	if (data == NULL)
+		return;
+	dt = (struct gt_func_template_set_data *)data;
+	gt_setting_list_cleanup(dt->attrs);
+	free(dt);
+}
+
+static int gt_func_template_set_func(void *data)
+{
+	struct gt_func_template_set_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_func_template_set_data *)data;
+	printf("Func template set called successfully. Not implemented.\n");
+	printf("name=%s", dt->name);
+
+	for (ptr = dt->attrs; ptr->variable; ptr++)
+		printf(", %s=%s", ptr->variable, ptr->value);
+	putchar('\n');
+
+	return 0;
+}
+
+static int gt_func_template_set_help(void *data)
+{
+	printf("Func template set help.\n");
+	return -1;
+}
+
+static void gt_parse_func_template_set(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	struct gt_func_template_set_data *dt = NULL;
+	int tmp;
+
+	if (argc < 2)
+		goto out;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	dt->name = argv[0];
+	tmp = gt_parse_setting_list(&dt->attrs, argc - 1, argv + 1);
+	if (tmp < 0)
+		goto out;
+
+	executable_command_set(exec, gt_func_template_set_func, (void *)dt,
+			gt_func_template_set_destructor);
+	return;
+
+out:
+	gt_func_template_set_destructor(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+static int gt_func_template_rm_func(void *data)
+{
+	const char *dt;
+
+	dt = (const char *)data;
+	printf("Func template rm called successfully. Not implemented.\n");
+	printf("name=%s\n", dt);
+
+	return 0;
+}
+
+static int gt_func_template_rm_help(void *data)
+{
+	printf("Func template rm help.\n");
+	return -1;
+}
+
+static void gt_parse_func_template_rm(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	const char *name;
+
+	if (argc != 1)
+		goto out;
+
+	name = argv[0];
+
+	executable_command_set(exec, gt_func_template_rm_func, (void *)name, NULL);
+
+	return;
+out:
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+const Command *gt_func_template_get_children(const Command *cmd)
+{
+	static Command commands[] = {
+		{"get", NEXT, gt_parse_func_template_get, NULL,
+			gt_func_template_get_help},
+		{"set", NEXT, gt_parse_func_template_set, NULL,
+			gt_func_template_set_help},
+		{"rm", NEXT, gt_parse_func_template_rm, NULL,
+			gt_func_template_rm_help},
+		{NULL, AGAIN, gt_parse_func_template, NULL,
+			gt_func_template_help},
+		{NULL, AGAIN, NULL, NULL, NULL}
+	};
+	return commands;
+}
+
 const Command *gt_func_get_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -694,8 +929,8 @@ const Command *gt_func_get_children(const Command *cmd)
 		{"set", NEXT, gt_parse_func_set, NULL, gt_func_set_help},
 		{"load", NEXT, gt_parse_func_load, NULL, gt_func_load_help},
 		{"save", NEXT, gt_parse_func_save, NULL, gt_func_save_help},
-//		{"template", AGAIN, parse_command,
-//			gt_func_template_get_children, gt_func_template_help},
+		{"template", NEXT, command_parse,
+			gt_func_template_get_children, gt_func_template_help},
 		{NULL, AGAIN, gt_parse_func_func, NULL, gt_func_func_help},
 		{NULL, AGAIN, NULL, NULL, NULL}
 	};
