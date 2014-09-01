@@ -121,7 +121,7 @@ int gt_parse_setting_list(struct gt_setting **dst, int argc, char **argv)
 	*dst = res;
 	return argc;
 out:
-	free(res);
+	gt_setting_list_cleanup(res);
 	return -1;
 }
 
