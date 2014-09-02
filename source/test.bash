@@ -2,14 +2,11 @@
 
 if [ "$1" ]
 then
-	if [ -f "$1" ]
-	then
-		GT="$1";
-	elif [ which "$1" &> /dev/null ]
+	if  which "$1" &> /dev/null;
 	then
 		GT="$1";
 	else
-		echo "Executable file not found. Aborted.";
+		echo "$1: Executable file not found. Aborted.";
 		exit 1;
 	fi
 elif [ -f "gt" ]
