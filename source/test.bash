@@ -1,5 +1,36 @@
 #!/bin/bash
 
+
+CHECK_MEM=0;
+MEMCHECK_ERROR=2;
+VALGRIND="valgrind -q --leak-check=full --error-exitcode=$MEMCHECK_ERROR";
+
+function usage {
+	echo "Usage: $0 [-hv] [executable]";
+	echo "Options:";
+	echo "-h Print this help";
+	echo "-v Look for memory leaks using valgrind memcheck";
+}
+
+while getopts vh opt; do
+	case $opt in
+	v)
+		CHECK_MEM=1;
+		;;
+	h)
+		usage;
+		exit 0;
+		;;
+	?)
+		usage;
+		exit 1;
+		;;
+	esac
+done
+
+shift $(( OPTIND - 1));
+
+
 if [ "$1" ]
 then
 	if  which "$1" &> /dev/null;
@@ -17,35 +48,62 @@ else
 	exit 1;
 fi
 
+if [ $CHECK_MEM -ne 0 ]
+then
+	EXECUTABLE="$VALGRIND $GT";
+else
+	EXECUTABLE=$GT;
+fi
+
 ERROR_COUNT=0;
 SUCCESS_COUNT=0;
 
+function print_failure {
+	echo "$(tput setaf 1)[FAILED]$(tput sgr0) $1";
+}
+
+function print_success {
+	echo "$(tput setaf 2)[OK]$(tput sgr0) $1";
+}
+
 function expect_success {
-	if ! $GT $1 > test.out; then
+	$EXECUTABLE $1 > test.out;
+	ret=$?;
+	if [[ $res -eq $MEMCHECK_ERROR ]]
+	then
 		ERROR_COUNT=$((ERROR_COUNT + 1));
-		echo "$(tput setaf 1)[FAILED]$(tput sgr0) gt $1 -- gt failed";
+		print_failure "gt $1 -- memcheck error";
+	elif [[ $res -ne 0 ]] ; then
+		ERROR_COUNT=$((ERROR_COUNT + 1));
+		print_failure " gt $1 -- gt failed";
 	elif ! diff -w <(tail -n+2 test.out) <(echo "$2") &> /dev/null; then
 		ERROR_COUNT=$((ERROR_COUNT + 1));
-		echo "$(tput setaf 1)[FAILED]$(tput sgr0) gt $1 -- unexpected output";
+		print_failure "gt $1 -- unexpected output";
 		echo "Expected:";
 		echo "$2";
 		echo "Got: ";
 		tail -n+2 test.out;
 	else
 		SUCCESS_COUNT=$((SUCCESS_COUNT + 1));
-		echo "$(tput setaf 2)[OK]$(tput sgr0) gt $1 -- succeed";
+		print_success "gt $1 -- succeed";
 	fi
 }
 
 function expect_failure {
-	if $GT $1 &> /dev/null; then
+	$EXECUTABLE $1 &> /dev/null;
+	ret=$?;
+	if [[ $ret -eq $MEMCHECK_ERROR ]]
+	then
 		ERROR_COUNT=$((ERROR_COUNT + 1));
-		echo "$(tput setaf 1)[FAILED]$(tput sgr0) gt $1 -- expected failure";
+		print_failure "gt $1 -- memcheck error";
+	elif [[ $ret -eq 0 ]]
+	then
+		ERROR_COUNT=$((ERROR_COUNT + 1));
+		print_failure "gt $1 -- expected failure";
 	else
 		SUCCESS_COUNT=$((SUCCESS_COUNT + 1));
-		echo "$(tput setaf 2)[OK]$(tput sgr0) gt $1 -- failed as expected";
+		print_success "gt $1 -- failed as expected";
 	fi
-
 }
 
 expect_success "settings set default-udc=udc1" "default-udc=udc1, ";
