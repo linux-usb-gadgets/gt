@@ -19,26 +19,27 @@ Content:
 
 			     1. Problem Description
 
-	Till intruduction of ConfigFS composite gadget in Linux kernel USB
+	Till introduction of ConfigFS composite gadget in Linux kernel USB
 gadgets could be only statically formed. This means that each USB gadget have
-it's own module wher set of function was defined by programmer while writting
+it's own module where set of function was defined by programmer while writting
 this module. To run such gadget user could simply:
 
 	$ modprobe <gadget_module> [additional options]
 
-The usage of the old convention was easy but unflexible. User could not form
+The usage of the old convention was easy but inflexible. User could not form
 custom gadget without writting a new module.
 
 	ConfigFS has separated code of functions and configuration. This means
 that there is a set of modules which implements each one USB function and the
 gadget is build in runtime by creating directories, files and symbolic links.
-To set up a gadget using Config FS user need to execute at least:
+To set up a gadget using ConfigFS user need to execute at least:
 
 	$ cd $CONFIGFS_HOME
 	$ mkdir <gadget name>
+	$ cd <gadget name>
 	$ mkdir configs/<config name>.<config number>
-	$ mkdir functions/<fucion type>.<instance name>
-	$ ln -s functions/<fucion> configs/<configuration>
+	$ mkdir functions/<function type>.<instance name>
+	$ ln -s functions/<function> configs/<configuration>
 	$ echo <udc name> > UDC
 
 Gadget creation is quite easy but it needs five times more commands than
@@ -48,7 +49,7 @@ less work.
 Current state is a consequence of ConfigFS design goals. One of the requirements
 was to allow user configure gadget without any external tool. The kernel goal
 has been reached, gadget can be configured without any tools but it's not a
-comfortabale method for end users. That's why I decided to create this tool,
+comfortable method for end users. That's why I decided to create this tool,
 make linux users life better. Let's create better solutions together!
 
 ========================================
@@ -56,14 +57,14 @@ make linux users life better. Let's create better solutions together!
 				    2. Goals
 
 	The main goal is to allow user set up an USB gadget using only one
-commandjust like using modprobe. This goal is absolutly a must and it has to be
+command just like using modprobe. This goal is absolutely a must and it has to be
 achieved.
 	Second goal is to wrap file system operations (mkdir, ln -s echo etc.)
 with gadget specific commands. It would be great if a user could simply set
 some parameters of configuration/device/function with dedicated command line
 calls instead of direct manipulation on config file system.
 	Third goal is to allow user share gadgets with other users with simply
-provideing them some file. This will allow linux distributiors to provide a set
+providing them some file. This will allow linux distributions to provide a set
 of standard gadget configurations and to achieve first goal.
 	Fourth goal is to allow user share their functions and configurations.
 This goal is not so important as third goal but it's a nice feature to allow
@@ -103,11 +104,11 @@ represented by variable.
 		     ==== 3.1.2 Settings variable list ====
 
 UDC on which gadgets should be enabled by default.
-If unset and only one udc is availiable that one is taken as default
+If unset and only one udc is available that one is taken as default
 
 	default-udc
 
-Path where config fs has been mounted
+Path where ConfigFS has been mounted
 
 	config-fs-path
 
@@ -119,7 +120,7 @@ Path where templates should be stored. Default could be /etc/gt/templates
 
 	default-template-path
 
-Default gadget to be load. By setting value of this variable user can sibly
+Default gadget to be load. By setting value of this variable user can simply
 write gt load and $default-gadget will be loaded and enabled.
 
 	default-gadget
@@ -148,7 +149,7 @@ attr has not been given, all attributes are printed.
 
 	$ gt get <gadget name> [attr]
 
-Sets givent attributes to new values. If an attribute should be created the
+Sets given attributes to new values. If an attribute should be created the
 name should be completed with / and it's value set to 1, or to 0
 if attr should be removed. For example gt set gadget1 strings/0x415/=1 creates
 a directory 0x415 in strings directory, and then you can simply set values of
@@ -159,7 +160,7 @@ strings/0x415/manofacturer="Polski producent"
 
 Enables gadget on udc. If gadget has not been specified and only one exist
 than one is taken. If more than one gadget exist including default one the
-default is taken, else command faill due to ambigous gadget. That same rule is
+default is taken, else command fails due to ambiguous gadget. That same rule is
 used while choosing an udc.
 Options:
 -g=<gadget> --gadget=<gadget> - specifies gadget to enable
@@ -169,7 +170,7 @@ Options:
 
 Disable gadget. If gadget has been specified it is disabled, otherwise: if
 only one gadget exist it is used, if more than one gadget exist including
-default gadget, the default is disabled else error due to ambigous gadget name
+default gadget, the default is disabled else error due to ambiguous gadget name
 unless -u or --udc option was used.
 Options:
 -u=<udc> --udc=<udc> - disables a gadget which is active at given udc
@@ -221,7 +222,7 @@ values. If attr has not been given, all attributes are printed.
 
 	$ gt template get <name> [template_attr]
 
-Sets givent attributes to new values.
+Sets given attributes to new values.
 
 	$ gt template set <name> <attr>=<val>
 
@@ -253,7 +254,7 @@ attr has not been given, all attributes are printed.
 
 	$ gt config get <gadget name> <config name> [attr]
 
-Sets givent attributes to new values. If an attribute should be created the
+Sets given attributes to new values. If an attribute should be created the
 name should be completed with / and it's value set to 1, or to 0
 if attr should be removed. For example gt config set gadget1 c.1
 strings/0x415/=1 creates a directory 0x415 in strings directory, and then you
@@ -318,7 +319,7 @@ values. If attr has not been given, all attributes are printed.
 
 	$ gt config template get <name> [template_attr]
 
-Sets givent attributes to new values.
+Sets given attributes to new values.
 
 	$ gt config template set <name> <attr>=<val>
 
@@ -352,7 +353,7 @@ attr has not been given, all attributes are printed.
 	$ gt func get <gadget name> <func type> <func name> [attr]
 	$ gt func get <gadget name> <function> [attr]
 
-Sets givent attributes to new values. If an attribute should be created the
+Sets given attributes to new values. If an attribute should be created the
 name should be completed with / and it's value set to 1, or to 0
 if attr should be removed. For example gt func set gadget1 mass_storage.f1
 lun.1/=1 creates a directory lun.1 in function directory, and then you can
@@ -360,12 +361,12 @@ simply set values of attributes below that directory - gt func set gadget1
 mass_storage.f1 lun.1/file=/root/some_image.img
 
 	$ gt func set <gadget name> <func type> <func name> <attr>=<val>
-	$ gt func set <gadget name> <funcition> <attr>=<val>
+	$ gt func set <gadget name> <function> <attr>=<val>
 
 If no function specified shows the list of functions, otherwise shows the
 function name and list of first level attributes.
 Options:
--v --verbose - shows all levels of atributes
+-v --verbose - shows all levels of attributes
 
 	$ gt func <gadget name> [<func type> <func name>]
 	$ gt func <gadget name> [function]
@@ -375,7 +376,7 @@ Options:
 If no function specified shows the list of functions, otherwise shows the
 function name and list of first level attributes.
 Options:
--v --verbose - shows all levels of atributes
+-v --verbose - shows all levels of attributes
 
 	$ gt func template [name]
 
@@ -404,7 +405,7 @@ values. If attr has not been given, all attributes are printed.
 
 	$ gt func template get <name> [template_attr]
 
-Sets givent attributes to new values.
+Sets given attributes to new values.
 
 	$ gt func template set <name> <attr>=<val>
 
