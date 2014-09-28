@@ -24,18 +24,40 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+#include <libgen.h>
 
+#include "common.h"
 #include "parser.h"
 #include "executable_command.h"
+
+char *program_name;
+
+static char *program_name_get(char *name, char **copy)
+{
+	char *p;
+
+	/* POSIX version of basename(3) modifies its argument, thus the copy */
+	p = strdup(name);
+	if (!p)
+		return name;
+	*copy = p;
+
+	return basename(p);
+}
 
 int main(int argc, char **argv)
 {
 	int ret;
 	ExecutableCommand cmd;
+	char *buf = NULL;
 
+	program_name = program_name_get(argv[0], &buf);
 	gt_parse_commands(argc, argv, &cmd);
 
 	ret = executable_command_exec(&cmd);
 	executable_command_clean(&cmd);
+
+	free(buf);
 	return ret;
 }

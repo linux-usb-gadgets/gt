@@ -19,6 +19,12 @@
 
 #include <stdlib.h>
 
+/**
+ * @brief Short program name
+ * @description Basename of program invocation name
+ */
+extern char *program_name;
+
 static inline void *zalloc(size_t size)
 {
 	return calloc(1, size);
