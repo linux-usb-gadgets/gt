@@ -29,6 +29,7 @@
 
 #include "common.h"
 #include "parser.h"
+#include "backend.h"
 #include "executable_command.h"
 
 char *program_name;
@@ -53,11 +54,15 @@ int main(int argc, char **argv)
 	char *buf = NULL;
 
 	program_name = program_name_get(argv[0], &buf);
+	ret = gt_backend_init(program_name, 0);
+	if (ret < 0)
+		goto out;
 	gt_parse_commands(argc, argv, &cmd);
 
 	ret = executable_command_exec(&cmd);
 	executable_command_clean(&cmd);
 
+out:
 	free(buf);
 	return ret;
 }
