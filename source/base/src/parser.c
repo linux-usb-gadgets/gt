@@ -38,8 +38,28 @@
 
 int gt_global_help(void *data)
 {
-	printf("Global help function\n");
-	return -1;
+	printf("Usage: %s {OBJECT} [COMMAND]\n"
+	       "Object is either implicit (if not specified) or explicit:\n"
+	       "  udc\n"
+	       "  settings\n"
+	       "  config\n"
+	       "  func\n"
+	       "Implicit gadget commands:\n"
+	       "  create\n"
+	       "  rm\n"
+	       "  get\n"
+	       "  set\n"
+	       "  enable\n"
+	       "  disable\n"
+	       "  template\n"
+	       "  load\n"
+	       "  save\n"
+	       "Most commands recognize 'help' argument to display usage information, eg.\n"
+	       "  create help\n"
+	       "  func get help\n",
+	       program_name);
+
+	return 0;
 }
 
 static inline const Command *gt_get_command_root_children(const Command *cmd)
