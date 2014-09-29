@@ -30,6 +30,9 @@ static inline void *zalloc(size_t size)
 	return calloc(1, size);
 }
 
+#define streq(a, b) (strcmp(a, b) == 0)
+#define strcaseeq(a, b) (strcasecmp(a, b) == 0)
+
 #define ARRAY_SIZE(array) sizeof(array)/sizeof(*array)
 
 #endif //__GADGET_TOOL_COMMON_H__
