@@ -12,6 +12,8 @@ ADD_DEFINITIONS("-DPREFIX=\"${PREFIX}\"")
 
 SET(PKG_MODULES
         libusbg
+	glib-2.0
+	gio-2.0
 )
 
 INCLUDE(FindPkgConfig)
