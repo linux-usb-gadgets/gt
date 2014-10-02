@@ -18,6 +18,7 @@
 #define __GADGET_TOOL_COMMON_H__
 
 #include <stdlib.h>
+#include <gio/gio.h>
 
 /**
  * @brief Short program name
@@ -34,5 +35,17 @@ static inline void *zalloc(size_t size)
 #define strcaseeq(a, b) (strcasecmp(a, b) == 0)
 
 #define ARRAY_SIZE(array) sizeof(array)/sizeof(*array)
+
+static inline void _cleanup_fn_g_free_(void *p) {
+	g_free(*(gpointer *)p);
+}
+
+static inline void _cleanup_fn_free_(void *p) {
+	free(*(void **)p);
+}
+
+#define _cleanup_(fn)   __attribute__((cleanup(fn)))
+#define _cleanup_g_free_ _cleanup_(_cleanup_fn_g_free_)
+#define _cleanup_free_  _cleanup_(_cleanup_fn_free_)
 
 #endif //__GADGET_TOOL_COMMON_H__
