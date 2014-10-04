@@ -400,8 +400,20 @@ static int gt_func_func_func(void *data)
 
 static int gt_func_func_help(void *data)
 {
-	printf("Func func help.\n");
-	return -1;
+	printf("usage: %s func COMMAND\n"
+	       "Manipulate USB function - both in-kernel and functionfs-based\n\n",
+		program_name);
+
+	printf("Command:\n"
+	       "  create\n"
+	       "  rm\n"
+	       "  get\n"
+	       "  set\n"
+	       "  load\n"
+	       "  save\n"
+	       "  template\n");
+
+	return 0;
 }
 
 static void gt_parse_func_func(const Command *cmd, int argc,
