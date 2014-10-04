@@ -17,12 +17,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <errno.h>
 
 #include "gadget.h"
 #include "common.h"
 #include "parser.h"
+#include "backend.h"
+
+static const struct {
+	char *name;
+	int (*set_fn)(usbg_gadget *, int, const char *);
+} strs[] = {
+	{ "product", usbg_set_gadget_product },
+	{ "manufacturer", usbg_set_gadget_manufacturer },
+	{ "serialnumber", usbg_set_gadget_product },
+};
 
 struct gt_gadget_create_data {
 	const char *name;
@@ -41,29 +53,217 @@ static void gt_gadget_create_destructor(void *data)
 	free(dt);
 }
 
+static char *attr_type_get(usbg_gadget_attr a)
+{
+	switch (a) {
+	case B_DEVICE_CLASS:
+	case B_DEVICE_SUB_CLASS:
+	case B_DEVICE_PROTOCOL:
+	case B_MAX_PACKET_SIZE_0:
+		return "y";
+
+	case BCD_USB:
+	case ID_VENDOR:
+	case ID_PRODUCT:
+	case BCD_DEVICE:
+		return "q";
+
+	default:
+		return NULL;
+	}
+}
+
+static int attr_val_in_range(usbg_gadget_attr a, unsigned long int val)
+{
+	char *type = attr_type_get(a);
+
+	if (!type)
+		return 0;
+
+	if (type[0] == 'y')
+		return val <= UINT8_MAX;
+	else if (type[0] == 'q')
+		return val <= UINT16_MAX;
+	else
+		return 0;
+}
+
+
 static int gt_gadget_create_func(void *data)
 {
 	struct gt_gadget_create_data *dt;
-	struct gt_setting *ptr;
+	struct gt_setting *setting;
+	int attr_val[USBG_GADGET_ATTR_MAX];
+	char *str_val[G_N_ELEMENTS(strs)];
+	_Bool iter;
+	int i;
+	int r;
+
+	for (i = 0; i < G_N_ELEMENTS(attr_val); i++)
+		attr_val[i] = -1;
+	memset(str_val, 0, sizeof(str_val));
 
 	dt = (struct gt_gadget_create_data *)data;
-	printf("Gadget create called successfully. Not implemented.\n");
-	printf("name = %s, force = %d", dt->name, !!(dt->opts & GT_FORCE));
 
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
+	for (setting = dt->attrs; setting->variable; setting++) {
+		int attr_id;
+
+		iter = TRUE;
+
+		attr_id = usbg_lookup_gadget_attr(setting->variable);
+		if (attr_id >= 0) {
+			unsigned long int val;
+			char *endptr = NULL;
+
+			errno = 0;
+			val = strtoul(setting->value, &endptr, 0);
+			if (errno
+			    || *setting->value == 0
+			    || (endptr && *endptr != 0)
+			    || attr_val_in_range(attr_id, val) == 0) {
+
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+
+			attr_val[attr_id] = val;
+			iter = FALSE;
+		}
+		for (i = 0; iter && i < G_N_ELEMENTS(strs); i++) {
+			if (streq(setting->variable, strs[i].name)) {
+				str_val[i] = setting->value;
+				iter = FALSE;
+				break;
+			}
+		}
+
+		if (iter) {
+			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
+			return -1;
+		}
 	}
 
-	putchar('\n');
-	return 0;
+	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+
+		GVariantBuilder *b;
+		GVariant *gattrs;
+		GVariant *gstrs;
+		GVariant *v;
+		GError *err = NULL;
+
+		b = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+		for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++) {
+			if (attr_val[i] == -1)
+				continue;
+
+			g_variant_builder_add(b, "{sv}",
+					      usbg_get_gadget_attr_str(i),
+					      g_variant_new(attr_type_get(i), attr_val[i]));
+		}
+		gattrs = g_variant_builder_end(b);
+
+		b = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
+		for (i = 0; i < G_N_ELEMENTS(strs); i++) {
+			if (str_val[i] == NULL)
+				continue;
+
+			g_variant_builder_add(b, "{sv}",
+					      strs[i].name,
+					      g_variant_new("s", str_val[i]));
+		}
+		gstrs = g_variant_builder_end(b);
+
+		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						"org.usb.gadgetd",
+						"/org/usb/Gadget",
+						"org.usb.device.GadgetManager",
+						"CreateGadget",
+						g_variant_new("(s@a{sv}@a{sv})",
+							      dt->name,
+							      gattrs,
+							      gstrs),
+						NULL,
+						G_DBUS_CALL_FLAGS_NONE,
+						-1,
+						NULL,
+						&err);
+
+		if (err) {
+			fprintf(stderr, "Unable to create gadget: %s\n", err->message);
+			return -1;
+		}
+
+		g_variant_unref(v);
+		return 0;
+
+	} else if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+		usbg_gadget *g;
+
+		r = usbg_create_gadget(backend_ctx.libusbg_state,
+				       dt->name,
+				       NULL,
+				       NULL,
+				       &g);
+		if (r != USBG_SUCCESS) {
+			fprintf(stderr, "Unable to create gadget %s: %s\n",
+				dt->name, usbg_strerror(r));
+			return -1;
+		}
+
+		for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++) {
+			if (attr_val[i] == -1)
+				continue;
+
+			r = usbg_set_gadget_attr(g, i, attr_val[i]);
+			if (r != USBG_SUCCESS) {
+				fprintf(stderr, "Unable to set attribute %s: %s\n",
+					usbg_get_gadget_attr_str(i),
+					usbg_strerror(r));
+				goto err_usbg;
+			}
+		}
+
+		for (i = 0; i < G_N_ELEMENTS(str_val); i++) {
+			if (str_val[i] == NULL)
+				continue;
+
+			r = strs[i].set_fn(g, LANG_US_ENG, str_val[i]);
+			if (r != USBG_SUCCESS) {
+				fprintf(stderr, "Unable to set string %s: %s\n",
+					strs[i].name,
+					usbg_strerror(r));
+				goto err_usbg;
+			}
+		}
+
+		return 0;
+
+	err_usbg:
+		usbg_rm_gadget(g, USBG_RM_RECURSE);
+		return -1;
+	}
+
+	return -1;
 }
 
 static int gt_gadget_create_help(void *data)
 {
-	printf("Gadget create help.\n");
-	return -1;
+	int i;
+
+	printf("%s create NAME [attr=value]...\n"
+	       "Attributes:\n",
+	       program_name);
+
+	for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++)
+		printf("  %s\n", usbg_get_gadget_attr_str(i));
+
+	printf("Device strings (en_US locale):\n");
+
+	for (i = 0; i < G_N_ELEMENTS(strs); i++)
+		printf("  %s\n", strs[i].name);
+
+	return 0;
 }
 
 static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
