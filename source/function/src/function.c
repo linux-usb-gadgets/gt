@@ -23,6 +23,8 @@
 #include "function.h"
 #include "common.h"
 #include "parser.h"
+#include "backend.h"
+#include <gio/gio.h>
 
 static int gt_get_func_name(char **type, char **name, int argc, char **argv)
 {
@@ -71,25 +73,99 @@ static void gt_func_create_destructor(void *data)
 static int gt_func_create_func(void *data)
 {
 	struct gt_func_create_data *dt;
-	struct gt_setting *ptr;
 
 	dt = (struct gt_func_create_data *)data;
-	printf("Func create called successfully. Not implemented.\n");
-	printf("gadget=%s, type=%s, name=%s, force=%d",
-		dt->gadget, dt->type, dt->name, !!(dt->opts & GT_FORCE));
 
-	for (ptr = dt->attrs; ptr->variable; ptr++)
-		printf(", %s=%s", ptr->variable, ptr->value);
+	if (dt->attrs->variable) {
+		/* TODO add support for attributes */
+		printf("Attributes are not supported now\n");
+		return -1;
+	}
 
-	putchar('\n');
+	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+		gchar *gadget_objpath = NULL;
+		GError *err = NULL;
+		GVariant *v;
 
-	return 0;
+		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						"org.usb.gadgetd",
+						"/org/usb/Gadget",
+						"org.usb.device.GadgetManager",
+						"FindGadgetByName",
+						g_variant_new("(s)", dt->gadget),
+						NULL,
+						G_DBUS_CALL_FLAGS_NONE,
+						-1,
+						NULL,
+						&err);
+		if (err) {
+			fprintf(stderr, "Unable to find gadget %s: %s\n", dt->gadget, err->message);
+			return -1;
+		}
+
+		g_variant_get(v, "(o)", &gadget_objpath);
+		g_variant_unref(v);
+
+		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						"org.usb.gadgetd",
+						gadget_objpath,
+						"org.usb.device.Gadget.FunctionManager",
+						"CreateFunction",
+						g_variant_new("(ss)", dt->name, dt->type),
+						NULL,
+						G_DBUS_CALL_FLAGS_NONE,
+						-1,
+						NULL,
+						&err);
+		if (err) {
+			fprintf(stderr, "Unable to create function: %s\n", err->message);
+			g_free(gadget_objpath);
+			return -1;
+		}
+
+		g_free(gadget_objpath);
+		g_variant_unref(v);
+		return 0;
+
+	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+		usbg_gadget *g;
+		usbg_function_type f_type;
+		usbg_function *f;
+		int r;
+
+		f_type = usbg_lookup_function_type(dt->type);
+		if (f_type < 0) {
+			fprintf(stderr, "Unable to find function %s: %s\n",
+				dt->type, usbg_strerror(f_type));
+			return -1;
+		}
+
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+		if (!g) {
+			fprintf(stderr, "Unable to find gadget %s\n",
+				dt->gadget);
+			return -1;
+		}
+
+		r = usbg_create_function(g, f_type, dt->name, NULL, &f);
+		if (r < 0) {
+			fprintf(stderr, "Unable to create function: %s\n",
+				usbg_strerror(r));
+			return -1;
+		}
+
+		return 0;
+	}
+
+	return -1;
 }
 
 static int gt_func_create_help(void *data)
 {
-	printf("Func create help.\n");
-	return -1;
+	printf("usage: %s func create GADGET_NAME FUNCTION_TYPE FUNCTION_NAME\n"
+	       "Create new function of specified type (refer to `gt func list-types')\n",
+		program_name);
+	return 0;
 }
 
 static void gt_parse_func_create(const Command *cmd, int argc,
