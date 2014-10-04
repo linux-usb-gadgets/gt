@@ -251,7 +251,9 @@ static int gt_gadget_create_help(void *data)
 {
 	int i;
 
-	printf("%s create NAME [attr=value]...\n"
+	printf("usage: %s create NAME [attr=value]...\n"
+	       "Create new gadget of specified name, attributes and language strings.\n"
+	       "\n"
 	       "Attributes:\n",
 	       program_name);
 
