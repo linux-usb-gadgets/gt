@@ -19,6 +19,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <glib.h>
+#include <gio/gio.h>
 
 #include "function.h"
 #include "common.h"
@@ -284,6 +286,73 @@ out:
 	executable_command_set(exec, gt_func_rm_help, data, NULL);
 }
 
+
+static int gt_func_list_types_func(void *data)
+{
+	int i;
+
+	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+		GError *err = NULL;
+		GVariantIter *iter;
+		GVariant *v;
+		gchar *s;
+
+		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						"org.usb.gadgetd",
+						"/org/usb/Gadget",
+						"org.usb.device.GadgetManager",
+						"ListAvailableFunctions",
+						NULL,
+						NULL,
+						G_DBUS_CALL_FLAGS_NONE,
+						-1,
+						NULL,
+						&err);
+
+		if (err) {
+			fprintf(stderr, "Unable to get function list: %s\n", err->message);
+			return -1;
+		}
+
+		printf("Discovered functions:\n");
+		g_variant_get(v, "(as)", &iter);
+		while (g_variant_iter_loop(iter, "s", &s))
+		       printf("  %s\n", s);
+
+		g_variant_iter_free(iter);
+		g_variant_unref(v);
+
+		return 0;
+
+	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+		printf("Functions known by library:\n");
+		for (i = USBG_FUNCTION_TYPE_MIN; i < USBG_FUNCTION_TYPE_MAX; i++)
+			printf("  %s\n", usbg_get_function_type_str(i));
+
+		return 0;
+	}
+
+	return -1;
+}
+
+static int gt_func_list_types_help(void *data)
+{
+	printf("%s func list-types\n"
+	       "List available function types.\n",
+		program_name);
+	return 0;
+}
+
+static void gt_parse_func_list_types(const Command *cmd, int argc,
+		char **argv, ExecutableCommand *exec, void * data)
+{
+	if (argc == 0)
+		executable_command_set(exec, gt_func_list_types_func, NULL, NULL);
+	else
+		executable_command_set(exec, gt_func_list_types_help, NULL, NULL);
+
+}
+
 struct gt_func_get_data {
 	const char *gadget;
 	char *type;
@@ -485,6 +554,7 @@ static int gt_func_func_help(void *data)
 	       "  rm\n"
 	       "  get\n"
 	       "  set\n"
+	       "  list-types\n"
 	       "  load\n"
 	       "  save\n"
 	       "  template\n");
@@ -1015,6 +1085,7 @@ const Command *gt_func_get_children(const Command *cmd)
 		{"rm", NEXT, gt_parse_func_rm, NULL, gt_func_rm_help},
 		{"get", NEXT, gt_parse_func_get, NULL, gt_func_get_help},
 		{"set", NEXT, gt_parse_func_set, NULL, gt_func_set_help},
+		{"list-types", NEXT, gt_parse_func_list_types, NULL, gt_func_list_types_help},
 		{"load", NEXT, gt_parse_func_load, NULL, gt_func_load_help},
 		{"save", NEXT, gt_parse_func_save, NULL, gt_func_save_help},
 		{"template", NEXT, command_parse,
