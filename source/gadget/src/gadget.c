@@ -197,7 +197,7 @@ static int gt_gadget_create_func(void *data)
 		g_variant_unref(v);
 		return 0;
 
-	} else if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
 		usbg_gadget *g;
 
 		r = usbg_create_gadget(backend_ctx.libusbg_state,
