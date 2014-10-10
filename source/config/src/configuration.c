@@ -23,6 +23,7 @@
 #include "configuration.h"
 #include "common.h"
 #include "parser.h"
+#include <errno.h>
 
 int gt_config_help(void *data)
 {
@@ -32,9 +33,10 @@ int gt_config_help(void *data)
 
 struct gt_config_create_data {
 	const char *gadget;
-	const char *config;
-	struct gt_setting *attrs;
+	int config_id;
+	const char *config_label;
 	int opts;
+	struct gt_setting *attrs;
 };
 
 static void gt_config_create_destructor(void *data)
@@ -48,15 +50,16 @@ static void gt_config_create_destructor(void *data)
 	free(dt);
 }
 
-static int  gt_config_create_func(void *data)
+static int gt_config_create_func(void *data)
 {
 	struct gt_config_create_data *dt;
 	struct gt_setting *ptr;
 
 	dt = (struct gt_config_create_data *)data;
+
 	printf("Config create called successfully. Not implemented.\n");
-	printf("gadget = %s, config = %s, force = %d",
-		dt->gadget, dt->config, !!(dt->opts & GT_FORCE));
+	printf("gadget = %s, config_label = %s, config_id = %d, force = %d\n",
+		dt->gadget, dt->config_label, dt->config_id, !!(dt->opts & GT_FORCE));
 
 	ptr = dt->attrs;
 	while (ptr->variable) {
@@ -70,8 +73,11 @@ static int  gt_config_create_func(void *data)
 
 static int gt_config_create_help(void *data)
 {
-	printf("Config create help.\n");
-	return -1;
+	printf("usage: %s config create GADGET_NAME <cf_label>  <cfg_id> <-f>\n"
+	       "Add new config to gadget.\n"
+	       "\n",
+	       program_name);
+	return 0;
 }
 
 static void gt_parse_config_create(const Command *cmd, int argc, char **argv,
@@ -81,25 +87,33 @@ static void gt_parse_config_create(const Command *cmd, int argc, char **argv,
 	int ind;
 	struct gt_config_create_data *dt;
 	int avaible_opts = GT_FORCE;
+	char *endptr = NULL;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
+
 	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
 	if (ind < 0)
 		goto out;
 
-	if (argc - ind < 2)
+	/* Since now we support only g1 label 1 version */
+	if (argc - ind < 3)
 		goto out;
 
+	errno = 0;
 	dt->gadget = argv[ind++];
-	dt->config = argv[ind++];
+	dt->config_label = argv[ind++];
+	dt->config_id = strtoul(argv[ind++], &endptr, 0);
+	if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
+		goto out;
+
 	c = gt_parse_setting_list(&dt->attrs, argc - ind, argv + ind);
 	if (c < 0)
 		goto out;
 
 	executable_command_set(exec, gt_config_create_func,
-				(void *)dt, gt_config_create_destructor);
+			       (void *)dt, gt_config_create_destructor);
 	return;
 
 out:
@@ -356,106 +370,91 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
-struct gt_config_add_data {
+struct gt_config_add_del_data {
 	const char *gadget;
-	const char *config;
-	char *type;
-	char *instance;
+	int   config_id;
+	const char *config_label;
+	const char *type;
+	const char *instance;
 };
-
-static void gt_config_add_destructor(void *data)
-{
-	struct gt_config_add_data *dt;
-
-	if (data == NULL)
-		return;
-	dt = (struct gt_config_add_data *)data;
-	free(dt->type);
-	free(dt->instance);
-	free(dt);
-}
 
 static int gt_config_add_func(void *data)
 {
-	struct gt_config_add_data *dt;
+	struct gt_config_add_del_data *dt;
 
-	dt = (struct gt_config_add_data *)data;
+	dt = (struct gt_config_add_del_data *)data;
+
 	printf("Config add called successfully. Not implemented.\n");
-	printf("gadget = %s, conf = %s, type = %s, instance = %s\n",
-			dt->gadget, dt->config, dt->type, dt->instance);
+	printf("gadget = %s, cfg_label = %s, cfg_id = %d, type = %s, instance = %s\n",
+			dt->gadget, dt->config_label, dt->config_id, dt->type, dt->instance);
+
 	return 0;
 }
 
 static int gt_config_add_help(void *data)
 {
-	printf("Config add help.\n");
-	return -1;
+	printf("usage: %s config add GADGET_NAME <cfg_id> <cf_label> <func_type> <func_instance>\n"
+	       "Add function to specific configuration.\n"
+	       "\n",
+	       program_name);
+	return 0;
 }
 
 static void gt_parse_config_add(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void *data)
 {
-	struct gt_config_add_data *dt = NULL;
-	int tmp;
+	/* TODO validate ID */
+	struct gt_config_add_del_data *dt = NULL;
+	char *endptr = NULL;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
 	switch (argc) {
-	case 3:
-		tmp = gt_parse_function_name(&dt->type, &dt->instance,
-				argv[2]);
-		if (tmp < 0)
-			goto out;
-		break;
 	case 4:
-		dt->type = strdup(argv[2]);
-		dt->instance = strdup(argv[3]);
+	/* we are parsing e.g G1 1 acm usb0 or G1 1 ffs.one i_name */
+		errno = 0;
+		dt->config_id = strtoul(argv[1], &endptr, 0);
+		if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
+			goto out;
+		dt->config_label = "";
+		dt->type = argv[2];
+		dt->instance = argv[3];
+		break;
+	case 5:
+	/* we are parsing e.g G1 label 1 acm usb0 or G1 label 1 ffs.one usb0*/
+		errno = 0;
+		dt->config_label = argv[1];
+		dt->config_id = strtoul(argv[2], &endptr, 0);
+		if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
+			goto out;
+		dt->type = argv[3];
+		dt->instance = argv[4];
 		break;
 	default:
 		goto out;
 	}
 
 	dt->gadget = argv[0];
-	dt->config = argv[1];
 
-	executable_command_set(exec, gt_config_add_func, (void *)dt,
-			gt_config_add_destructor);
+	executable_command_set(exec, gt_config_add_func, (void *)dt, free);
 
 	return;
 out:
-	gt_config_add_destructor((void *)dt);
-	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_config_del_data {
-	const char *gadget;
-	const char *config;
-	char *type;
-	char *instance;
-};
-
-static void gt_config_del_destructor(void *data)
-{
-	struct gt_config_del_data *dt;
-
-	if (data == NULL)
-		return;
-	dt = (struct gt_config_del_data *)data;
-	free(dt->type);
-	free(dt->instance);
 	free(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
 static int gt_config_del_func(void *data)
 {
-	struct gt_config_del_data *dt;
+	struct gt_config_add_del_data *dt;
 
-	dt = (struct gt_config_del_data *)data;
+	dt = (struct gt_config_add_del_data *)data;
 	printf("Config del called successfully. Not implemented.\n");
-	printf("gadget = %s, conf = %s, type = %s, instance = %s\n",
-			dt->gadget, dt->config, dt->type, dt->instance);
+	printf("gadget = %s, cfg_label = %s, cfg_id = %d, type = %s, instance = %s\n",
+			dt->gadget, dt->config_label, dt->config_id, dt->type, dt->instance);
+
 	return 0;
 }
 
@@ -468,41 +467,45 @@ static int gt_config_del_help(void *data)
 static void gt_parse_config_del(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void *data)
 {
-	struct gt_config_add_data *dt = NULL;
-	int tmp;
+	struct gt_config_add_del_data *dt = NULL;
+	char *endptr = NULL;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
 	switch (argc) {
-	case 3:
-		tmp = gt_parse_function_name(&dt->type, &dt->instance,
-				argv[2]);
-		if (tmp < 0)
-			goto out;
-		break;
 	case 4:
-		dt->type = strdup(argv[2]);
-		if (dt->type == NULL)
+	/* we are parsing e.g G1 1 acm usb0 or G1 1 ffs.one i_name */
+		errno = 0;
+		dt->config_id = strtoul(argv[1], &endptr, 0);
+		if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
 			goto out;
-		dt->instance = strdup(argv[3]);
-		if (dt->instance == NULL)
+		dt->config_label = "";
+		dt->type = argv[2];
+		dt->instance = argv[3];
+		break;
+	case 5:
+	/* we are parsing e.g G1 label 1 acm usb0 or G1 label 1 ffs.one usb0*/
+		errno = 0;
+		dt->config_label = argv[1];
+		dt->config_id = strtoul(argv[2], &endptr, 0);
+		if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
 			goto out;
+		dt->type = argv[3];
+		dt->instance = argv[4];
 		break;
 	default:
 		goto out;
 	}
 
 	dt->gadget = argv[0];
-	dt->config = argv[1];
 
-	executable_command_set(exec, gt_config_del_func, (void *)dt,
-			gt_config_del_destructor);
+	executable_command_set(exec, gt_config_del_func, (void *)dt, free);
 
 	return;
 out:
-	gt_config_del_destructor((void *)dt);
+	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
