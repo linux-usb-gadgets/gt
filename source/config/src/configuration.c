@@ -442,9 +442,149 @@ static int gt_config_add_func(void *data)
 
 	dt = (struct gt_config_add_del_data *)data;
 
-	printf("Config add called successfully. Not implemented.\n");
-	printf("gadget = %s, cfg_label = %s, cfg_id = %d, type = %s, instance = %s\n",
-			dt->gadget, dt->config_label, dt->config_id, dt->type, dt->instance);
+	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+		_cleanup_g_free_ gchar *gpath = NULL;
+		_cleanup_g_free_ gchar *fpath = NULL;
+		_cleanup_g_free_ gchar *cpath = NULL;
+		GVariant *gret;
+		GError *error = NULL;
+		gboolean function_added;
+
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   "/org/usb/Gadget",
+						   "org.usb.device.GadgetManager",
+						   "FindGadgetByName",
+						   g_variant_new ("(s)",
+						                  dt->gadget),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+
+		if (error) {
+			fprintf(stderr, "Failed to find gadget, %s\n", error->message);
+			return -1;
+		}
+
+		g_variant_get(gret, "(o)", &gpath);
+		g_variant_unref(gret);
+
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   gpath,
+						   "org.usb.device.Gadget.FunctionManager",
+						   "FindFunctionByName",
+						   g_variant_new ("(ss)",
+								  dt->type,
+								  dt->instance),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+
+		if (error) {
+			fprintf(stderr, "Failed to find function, %s\n", error->message);
+			return -1;
+		}
+
+		g_variant_get(gret, "(o)", &fpath);
+		g_variant_unref(gret);
+
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   gpath,
+						   "org.usb.device.Gadget.ConfigManager",
+						   "FindConfigByName",
+						   g_variant_new ("(is)",
+								  dt->config_id,
+								  dt->config_label),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+
+		if (error) {
+			fprintf(stderr, "Failed to find config, %s\n", error->message);
+			return -1;
+		}
+
+		g_variant_get(gret, "(o)", &cpath);
+		g_variant_unref(gret);
+
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   cpath,
+						   "org.usb.device.Gadget.Config",
+						   "AttachFunction",
+						   g_variant_new ("(o)", fpath),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+
+		if (error) {
+			fprintf(stderr,"Failed to attach function, %s\n", error->message);
+			return -1;
+		}
+
+		g_variant_get(gret, "(b)", &function_added);
+		g_variant_unref(gret);
+
+	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+		int usbg_ret = USBG_SUCCESS;
+		usbg_function_type f_type;
+		usbg_gadget *g;
+		usbg_function *f;
+		usbg_config *c;
+		int n;
+		char buff[255];
+		_cleanup_g_free_ gchar *func_name = NULL;
+		const char *cfg_label = NULL;
+
+		cfg_label = dt->config_label;
+
+		/* func_name cant be NULL (libusbg requirement) */
+		n = snprintf(buff, 255, "%s.%s", dt->type, dt->instance);
+		if (n < 0)
+			return -1;
+		func_name = strdup(buff);
+
+		f_type = usbg_lookup_function_type(dt->type);
+
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+		if (g == NULL) {
+			fprintf(stderr, "Unable to get gadget\n");
+			return -1;
+		}
+
+		f = usbg_get_function(g, f_type, dt->instance);
+		if (f == NULL) {
+			fprintf(stderr, "Unable to get function\n");
+			return -1;
+		}
+
+		if (strcmp(dt->config_label, "") == 0)
+			cfg_label = NULL;
+
+		c = usbg_get_config(g, dt->config_id, cfg_label);
+		if (c == NULL) {
+			fprintf(stderr, "Unable to get config\n");
+			return -1;
+		}
+
+		usbg_ret = usbg_add_config_function(c, func_name, f);
+		if (usbg_ret != USBG_SUCCESS) {
+			fprintf(stderr, "Unable to attach function\n");
+			fprintf(stderr,"Error: %s: %s\n", usbg_error_name(usbg_ret),
+				usbg_strerror(usbg_ret));
+			return -1;
+		}
+	}
 
 	return 0;
 }
