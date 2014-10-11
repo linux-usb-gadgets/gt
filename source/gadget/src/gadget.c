@@ -498,12 +498,124 @@ static int gt_gadget_enable_func(void *data)
 	struct gt_gadget_enable_data *dt;
 
 	dt = (struct gt_gadget_enable_data *)data;
-	printf("Gadget enable called successfully. Not implemented.\n");
-	if (dt->gadget)
-		printf("gadget = %s, ", dt->gadget);
-	if (dt->udc)
-		printf("udc = %s", dt->udc);
-	putchar('\n');
+
+	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+		/* TODO add support for enabling well known UDC */
+		GVariant *gret;
+		GError *error = NULL;
+		GDBusObjectManager *manager;
+		GList *objects;
+		GList *l;
+		const gchar *obj_path = NULL;
+		_cleanup_g_free_ gchar *g_path = NULL;
+		const gchar *msg = NULL;
+		gboolean out_gadget_enabled = 0;
+
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   "/org/usb/Gadget",
+						   "org.usb.device.GadgetManager",
+						   "FindGadgetByName",
+						   g_variant_new("(s)",
+						                 dt->gadget),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+
+		if (error) {
+			fprintf(stderr, "Failed to get gadget, %s\n", error->message);
+			return -1;
+		}
+
+		g_variant_get(gret, "(o)", &g_path);
+		g_variant_unref(gret);
+
+		manager = g_dbus_object_manager_client_new_sync(backend_ctx.gadgetd_conn,
+						       G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
+						       "org.usb.gadgetd",
+						       "/org/usb/Gadget",
+						       NULL,
+						       NULL,
+						       NULL,
+						       NULL,
+						       &error);
+
+		if (error) {
+			fprintf(stderr, "Failed to get dbus object manager, %s\n", error->message);
+			return -1;
+		}
+
+		/* get first "free" udc and enable gadget */
+		objects = g_dbus_object_manager_get_objects(manager);
+		for (l = objects; l != NULL; l = l->next)
+		{
+			GDBusObject *object = G_DBUS_OBJECT(l->data);
+			obj_path = g_dbus_object_get_object_path(G_DBUS_OBJECT(object));
+
+			if (g_str_has_prefix(obj_path, "/org/usb/Gadget/UDC")) {
+				obj_path = g_dbus_object_get_object_path(G_DBUS_OBJECT(object));
+
+				gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+								   "org.usb.gadgetd",
+								   obj_path,
+								   "org.usb.device.UDC",
+								   "EnableGadget",
+								   g_variant_new("(o)",
+								                 g_path),
+								   NULL,
+								   G_DBUS_CALL_FLAGS_NONE,
+								   -1,
+								   NULL,
+								   &error);
+				if (error) {
+					msg = error->message;
+					goto out;
+				}
+				g_variant_get(gret, "(b)", &out_gadget_enabled);
+				if (out_gadget_enabled) {
+					g_variant_unref(gret);
+					goto out;
+				}
+			}
+		}
+out:
+		g_list_foreach(objects, (GFunc)g_object_unref, NULL);
+		g_list_free(objects);
+		g_object_unref(manager);
+
+		if (msg != NULL) {
+			fprintf(stderr, "Failed to enable gadget, %s\n", msg);
+			return -1;
+		}
+
+	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+		usbg_gadget *g;
+		usbg_udc *udc = NULL;
+		int usbg_ret;
+
+		if (dt->udc != NULL) {
+			udc = usbg_get_udc(backend_ctx.libusbg_state, dt->udc);
+			if (udc == NULL) {
+				fprintf(stderr, "Failed to get udc\n");
+				return -1;
+			}
+		}
+
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+		if (g == NULL) {
+			fprintf(stderr, "Failed to get gadget\n");
+			return -1;
+		}
+
+		usbg_ret = usbg_enable_gadget(g, udc);
+		if (usbg_ret != USBG_SUCCESS) {
+			fprintf(stderr, "Failed to get gadget %s\n", usbg_strerror(usbg_ret));
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
