@@ -517,39 +517,28 @@ static void gt_parse_gadget_enable(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
 	struct gt_gadget_enable_data *dt;
-	char c;
-	struct option opts[] = {
-		{"gadget", required_argument, 0, 'g'},
-		{"udc", required_argument, 0, 'u'},
-		{0, 0, 0, 0}
-	};
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
-	argv--;
-	argc++;
-	while (1) {
-		int opt_index = 0;
-		c = getopt_long(argc, argv, "g:u:", opts, &opt_index);
-		if (c == -1)
-			break;
-		switch (c) {
-		case 'g':
-			dt->gadget = optarg;
-			break;
-		case 'u':
-			dt->udc = optarg;
-			break;
-		default:
-			goto out;
-		}
+
+	switch (argc) {
+	case 1:
+		dt->gadget = argv[0];
+		break;
+	case 2:
+		dt->gadget = argv[0];
+		dt->udc = argv[1];
+		break;
+	default:
+		goto out;
 	}
 
-	executable_command_set(exec, gt_gadget_enable_func, (void *)dt, free);
+	executable_command_set(exec, gt_gadget_enable_func,
+				(void *)dt, free);
 	return;
 out:
-	free(dt);
+	free((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
