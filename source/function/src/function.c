@@ -28,32 +28,10 @@
 #include "backend.h"
 #include <gio/gio.h>
 
-static int gt_get_func_name(char **type, char **name, int argc, char **argv)
-{
-	int tmp;
-
-	if (argc < 0)
-		return -1;
-
-	if (strchr(argv[0], '.') != NULL) {
-		tmp = gt_parse_function_name(type, name, argv[0]);
-		if (tmp < 0)
-			return tmp;
-		return 1;
-	}
-
-	if (argc < 2)
-		return -1;
-
-	*type = strdup(argv[0]);
-	*name = strdup(argv[1]);
-	return 2;
-}
-
 struct gt_func_create_data {
 	const char *gadget;
-	char *type;
-	char *name;
+	const char *type;
+	const char *name;
 	int opts;
 	struct gt_setting *attrs;
 };
@@ -66,8 +44,6 @@ static void gt_func_create_destructor(void *data)
 		return;
 
 	dt = (struct gt_func_create_data *)data;
-	free(dt->type);
-	free(dt->name);
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
 }
@@ -186,15 +162,12 @@ static void gt_parse_func_create(const Command *cmd, int argc,
 	if (ind < 0)
 		goto out;
 
-	if (argc - ind < 2)
+	if (argc - ind < 3)
 		goto out;
 
 	dt->gadget = argv[ind++];
-
-	tmp = gt_get_func_name(&dt->type, &dt->name, argc - ind, argv + ind);
-	if (tmp < 0)
-		goto out;
-	ind += tmp;
+	dt->type = argv[ind++];
+	dt->name = argv[ind++];
 
 	tmp = gt_parse_setting_list(&dt->attrs, argc - ind, argv + ind);
 	if (tmp < 0)
@@ -211,8 +184,8 @@ out:
 
 struct gt_func_rm_data {
 	const char *gadget;
-	char *type;
-	char *name;
+	const char *type;
+	const char *name;
 	int opts;
 };
 
@@ -224,8 +197,6 @@ static void gt_func_rm_destructor(void *data)
 		return;
 
 	dt = (struct gt_func_rm_data *)data;
-	free(dt->type);
-	free(dt->name);
 	free(dt);
 }
 
@@ -253,7 +224,6 @@ static void gt_parse_func_rm(const Command *cmd, int argc,
 {
 	struct gt_func_rm_data *dt = NULL;
 	int ind;
-	int tmp;
 	int avaible_opts = GT_FORCE | GT_RECURSIVE;
 
 	dt = zalloc(sizeof(*dt));
@@ -264,15 +234,12 @@ static void gt_parse_func_rm(const Command *cmd, int argc,
 	if (ind < 0)
 		goto out;
 
-	if (argc - ind < 2)
+	if (argc - ind < 3)
 		goto out;
 
 	dt->gadget = argv[ind++];
-
-	tmp = gt_get_func_name(&dt->type, &dt->name, argc - ind, argv + ind);
-	if (tmp < 0)
-		goto out;
-	ind += tmp;
+	dt->type = argv[ind++];
+	dt->name = argv[ind++];
 
 	if (ind != argc)
 		goto out;
@@ -355,8 +322,8 @@ static void gt_parse_func_list_types(const Command *cmd, int argc,
 
 struct gt_func_get_data {
 	const char *gadget;
-	char *type;
-	char *name;
+	const char *type;
+	const char *name;
 	const char **attrs;
 };
 
@@ -367,8 +334,6 @@ static void gt_func_get_destructor(void *data)
 	if (data == NULL)
 		return;
 	dt = (struct gt_func_get_data *)data;
-	free(dt->type);
-	free(dt->name);
 	free(dt->attrs);
 	free(dt);
 }
@@ -400,27 +365,26 @@ static void gt_parse_func_get(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
 	struct gt_func_get_data *dt = NULL;
-	int tmp;
+	int ind = 0;
 	int i;
 
-	if (argc < 2)
+	if (argc < 3)
 		goto out;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
-	dt->gadget = argv[0];
+	dt->gadget = argv[ind++];
+	dt->type = argv[ind++];
+	dt->name = argv[ind++];
 
-	tmp = gt_get_func_name(&dt->type, &dt->name, argc - 1, argv + 1);
-	if (tmp < 0)
-		goto out;
-
-	dt->attrs = calloc(argc - tmp, sizeof(char *));
+	/* One more for NULL */
+	dt->attrs = calloc(argc - ind + 1, sizeof(char *));
 	if (dt->attrs == NULL)
 		goto out;
 
-	argv += tmp + 1;
+	argv += ind;
 	for (i = 0; argv[i]; i++)
 		dt->attrs[i] = argv[i];
 
@@ -435,8 +399,8 @@ out:
 
 struct gt_func_set_data {
 	const char *gadget;
-	char *type;
-	char *name;
+	const char *type;
+	const char *name;
 	struct gt_setting *attrs;
 };
 
@@ -447,8 +411,6 @@ static void gt_func_set_destructor(void *data)
 	if (data == NULL)
 		return;
 	dt = (struct gt_func_set_data *)data;
-	free(dt->type);
-	free(dt->name);
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
 }
@@ -479,22 +441,22 @@ static void gt_parse_func_set(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
 	struct gt_func_set_data *dt = NULL;
+	int ind = 0;
 	int tmp;
 
-	if (argc < 2)
+	if (argc < 3)
 		goto out;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
-	dt->gadget = argv[0];
-	tmp = gt_get_func_name(&dt->type, &dt->name, --argc, ++argv);
-	if (tmp < 0)
-		goto out;
+	dt->gadget = argv[ind++];
+	dt->type = argv[ind++];
+	dt->name = argv[ind++];
 
-	argc -= tmp;
-	argv += tmp;
+	argc -= ind;
+	argv += ind;
 	tmp = gt_parse_setting_list(&dt->attrs, argc, argv);
 	if (tmp < 0)
 		goto out;
@@ -510,8 +472,8 @@ out:
 
 struct gt_func_func_data {
 	const char *gadget;
-	char *type;
-	char *name;
+	const char *type;
+	const char *name;
 	int opts;
 };
 
@@ -522,8 +484,6 @@ static void gt_func_func_destructor(void *data)
 	if (data == NULL)
 		return;
 	dt = (struct gt_func_func_data *)data;
-	free(dt->type);
-	free(dt->name);
 	free(dt);
 }
 
@@ -567,7 +527,6 @@ static void gt_parse_func_func(const Command *cmd, int argc,
 {
 	struct gt_func_func_data *dt = NULL;
 	int ind;
-	int tmp;
 	int avaible_opts = GT_VERBOSE;
 
 	if (argc < 1)
@@ -583,11 +542,11 @@ static void gt_parse_func_func(const Command *cmd, int argc,
 
 	dt->gadget = argv[ind++];
 	if (argc > ind) {
-		tmp = gt_get_func_name(&dt->type, &dt->name, argc - ind, argv + ind);
-		if (tmp < 0)
+		if (argc - ind != 2)
 			goto out;
-		if (ind + tmp != argc)
-			goto out;
+
+		dt->type = argv[ind++];
+		dt->name = argv[ind++];
 	}
 
 	executable_command_set(exec, gt_func_func_func, (void *)dt,
