@@ -23,7 +23,10 @@
 #include "configuration.h"
 #include "common.h"
 #include "parser.h"
+
 #include <errno.h>
+#include <backend.h>
+#include <gio/gio.h>
 
 int gt_config_help(void *data)
 {
@@ -53,21 +56,76 @@ static void gt_config_create_destructor(void *data)
 static int gt_config_create_func(void *data)
 {
 	struct gt_config_create_data *dt;
-	struct gt_setting *ptr;
 
 	dt = (struct gt_config_create_data *)data;
 
-	printf("Config create called successfully. Not implemented.\n");
-	printf("gadget = %s, config_label = %s, config_id = %d, force = %d\n",
-		dt->gadget, dt->config_label, dt->config_id, !!(dt->opts & GT_FORCE));
+	/* TODO implement -f option */
+	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+		GVariant *gret;
+		GError *error = NULL;
+		_cleanup_g_free_ gchar *path = NULL;
+		_cleanup_g_free_ gchar *out_config_path = NULL;
 
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   "/org/usb/Gadget",
+						   "org.usb.device.GadgetManager",
+						   "FindGadgetByName",
+						   g_variant_new ("(s)",
+						                  dt->gadget),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+
+		if (error) {
+			fprintf(stderr, "Failed to get gadget path, %s\n", error->message);
+			return -1;
+		}
+
+		g_variant_get(gret, "(o)", &path);
+		g_variant_unref(gret);
+
+		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
+						   "org.usb.gadgetd",
+						   path,
+						   "org.usb.device.Gadget.ConfigManager",
+						   "CreateConfig",
+						   g_variant_new ("(is)",
+								  dt->config_id,
+								  dt->config_label),
+						   NULL,
+						   G_DBUS_CALL_FLAGS_NONE,
+						   -1,
+						   NULL,
+						   &error);
+		if (error) {
+			fprintf(stderr, "Unknown error, %s\n", error->message);
+			return -1;
+		}
+		g_variant_get(gret, "(o)", &out_config_path);
+		g_variant_unref(gret);
+	} else {
+		int usbg_ret;
+		usbg_gadget *g;
+		usbg_config *c;
+
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+		if (g == NULL) {
+			fprintf(stderr, "Cant get gadget by name\n");
+			return -1;
+		}
+
+		usbg_ret = usbg_create_config(g, dt->config_id, dt->config_label, NULL, NULL, &c);
+		if (usbg_ret != USBG_SUCCESS) {
+			fprintf(stderr,"Error on config create\n");
+			fprintf(stderr,"Error: %s: %s\n", usbg_error_name(usbg_ret),
+				usbg_strerror(usbg_ret));
+			return -1;
+		}
 	}
 
-	putchar('\n');
 	return 0;
 }
 
