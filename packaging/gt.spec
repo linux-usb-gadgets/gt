@@ -9,6 +9,7 @@ Source0:         %{name}-%{version}.tar.gz
 Source1001:      %{name}.manifest
 BuildRequires:   cmake
 BuildRequires:   pkgconfig
+BuildRequires:   pkgconfig(glib-2.0)
 BuildRequires:   pkgconfig(libusbg)
 
 %description
