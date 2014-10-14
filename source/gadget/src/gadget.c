@@ -33,7 +33,7 @@ static const struct {
 } strs[] = {
 	{ "product", usbg_set_gadget_product },
 	{ "manufacturer", usbg_set_gadget_manufacturer },
-	{ "serialnumber", usbg_set_gadget_product },
+	{ "serialnumber", usbg_set_gadget_serial_number },
 };
 
 struct gt_gadget_create_data {
