@@ -580,6 +580,12 @@ static int gt_gadget_enable_func(void *data)
 				}
 			}
 		}
+
+		if (l == NULL) {
+			fprintf(stderr, "Failed to enable gadget, no UDC found\n");
+			return -1;
+		}
+
 out:
 		g_list_foreach(objects, (GFunc)g_object_unref, NULL);
 		g_list_free(objects);
@@ -611,7 +617,7 @@ out:
 
 		usbg_ret = usbg_enable_gadget(g, udc);
 		if (usbg_ret != USBG_SUCCESS) {
-			fprintf(stderr, "Failed to get gadget %s\n", usbg_strerror(usbg_ret));
+			fprintf(stderr, "Failed to enable gadget %s\n", usbg_strerror(usbg_ret));
 			return -1;
 		}
 	}
