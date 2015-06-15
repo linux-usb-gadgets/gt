@@ -20,6 +20,132 @@
 #include "command.h"
 
 /**
+ * An interface that backends need to implement. Not implemented functions
+ * should be filled with NULL pointers. For each function the only argument
+ * passed is a pointer to corresponding structure.
+ */
+struct gt_function_backend {
+	/**
+	 * Create a function
+	 */
+	int (*create)(void *);
+	/**
+	 * Remove a function
+	 */
+	int (*rm)(void *);
+	/**
+	 * List all known types of functions
+	 */
+	int (*list_types)(void *);
+	/**
+	 * Get attributes of a function
+	 */
+	int (*get)(void *);
+	/**
+	 * Set attributes of a function
+	 */
+	int (*set)(void *);
+	/**
+	 * Show functions
+	 */
+	int (*func)(void *);
+	/**
+	 * Load function from file
+	 */
+	int (*load)(void *);
+	/**
+	 * Save function to file
+	 */
+	int (*save)(void *);
+	/**
+	 * Function template
+	 */
+	int (*template_default)(void *);
+	/**
+	 * Get template attributes
+	 */
+	int (*template_get)(void *);
+	/**
+	 * Set template atributes
+	 */
+	int (*template_set)(void *);
+	/**
+	 * Remove template
+	 */
+	int (*template_rm)(void *);
+};
+
+struct gt_func_create_data {
+	const char *gadget;
+	const char *type;
+	const char *name;
+	int opts;
+	struct gt_setting *attrs;
+};
+
+struct gt_func_rm_data {
+	const char *gadget;
+	const char *type;
+	const char *name;
+	int opts;
+};
+
+struct gt_func_get_data {
+	const char *gadget;
+	const char *type;
+	const char *name;
+	const char **attrs;
+};
+
+struct gt_func_set_data {
+	const char *gadget;
+	const char *type;
+	const char *name;
+	struct gt_setting *attrs;
+};
+
+struct gt_func_func_data {
+	const char *gadget;
+	const char *type;
+	const char *name;
+	int opts;
+};
+
+struct gt_func_load_data {
+	const char *name;
+	const char *gadget;
+	const char *func;
+	const char *file;
+	const char *path;
+	int opts;
+};
+
+struct gt_func_save_data {
+	const char *gadget;
+	const char *func;
+	const char *name;
+	const char *file;
+	const char *path;
+	int opts;
+	struct gt_setting *attrs;
+};
+
+struct gt_func_template_data {
+	const char *name;
+	int opts;
+};
+
+struct gt_func_template_get_data {
+	const char *name;
+	const char **attrs;
+};
+
+struct gt_func_template_set_data {
+	const char *name;
+	struct gt_setting *attrs;
+};
+
+/**
  * @brief Gets the next possible commands after func
  * @param[in] cmd actual command (should be func)
  * @return Pointer to table with all children of cmd
@@ -36,5 +162,9 @@ const Command *gt_func_get_children(const Command *cmd);
  * @return -1 because invalid syntax has been provided
  */
 int gt_func_help(void *data);
+
+extern struct gt_function_backend gt_function_backend_libusbg;
+extern struct gt_function_backend gt_function_backend_gadgetd;
+extern struct gt_function_backend gt_function_backend_not_implemented;
 
 #endif //__GADGET_TOOL_FUNCTION_FUNCTION_H__

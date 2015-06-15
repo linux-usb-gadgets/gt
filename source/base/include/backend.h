@@ -42,14 +42,23 @@ enum gt_backend_type {
 	GT_BACKEND_LIBUSBG,
 };
 
+struct gt_backend {
+	struct gt_function_backend *function;
+};
+
 struct gt_backend_ctx {
-	enum gt_backend_type backend;
+	enum gt_backend_type backend_type;
+
+	struct gt_backend *backend;
 
 	union {
 		usbg_state *libusbg_state;
 		GDBusConnection *gadgetd_conn;
 	};
 };
+
+extern struct gt_backend gt_backend_libusbg;
+extern struct gt_backend gt_backend_gadgetd;
 
 extern struct gt_backend_ctx backend_ctx;
 

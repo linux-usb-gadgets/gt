@@ -21,25 +21,36 @@
 #include <gio/gio.h>
 
 #include "backend.h"
+#include "function.h"
 
 struct gt_backend_ctx backend_ctx = {
-	.backend = GT_BACKEND_AUTO,
+	.backend_type = GT_BACKEND_AUTO,
+};
+
+struct gt_backend gt_backend_libusbg = {
+	.function = &gt_function_backend_libusbg,
+};
+
+struct gt_backend gt_backend_gadgetd = {
+	.function = &gt_function_backend_gadgetd,
 };
 
 int gt_backend_init(const char *program_name, enum gt_option_flags flags)
 {
-	enum gt_backend_type backend;
+	enum gt_backend_type backend_type;
 	GError *err = NULL;
 
 	if (strcmp(program_name, "gt") == 0)
-		backend = GT_BACKEND_LIBUSBG;
+		backend_type = GT_BACKEND_LIBUSBG;
 	else if (strcmp(program_name, "gadgetctl") == 0)
-		backend = GT_BACKEND_GADGETD;
+		backend_type = GT_BACKEND_GADGETD;
 	else
-		backend = GT_BACKEND_AUTO;
+		backend_type = GT_BACKEND_AUTO;
 
-	if (backend == GT_BACKEND_GADGETD || backend == GT_BACKEND_AUTO) {
+	if (backend_type == GT_BACKEND_GADGETD || backend_type == GT_BACKEND_AUTO) {
 		GDBusConnection *conn;
+
+		backend_ctx.backend = &gt_backend_gadgetd;
 
 #if ! GLIB_CHECK_VERSION(2, 36, 0)
 		g_type_init();
@@ -69,31 +80,33 @@ int gt_backend_init(const char *program_name, enum gt_option_flags flags)
 			 * This message could be probably shown in verbose
 			 * mode (which we don't have yet).
 			 */
-			fprintf(stderr, "Unable to initialize gadgetd backend\n");
+			fprintf(stderr, "Unable to initialize gadgetd backend_type\n");
 			goto out_gadgetd;
 		}
 
-		backend_ctx.backend = GT_BACKEND_GADGETD;
+		backend_ctx.backend_type = GT_BACKEND_GADGETD;
 		backend_ctx.gadgetd_conn = conn;
 		return 0;
 
 	}
 
 out_gadgetd:
-	if (err && backend == GT_BACKEND_GADGETD)
+	if (err && backend_type == GT_BACKEND_GADGETD)
 		return -1;
 
-	if (backend == GT_BACKEND_LIBUSBG || backend == GT_BACKEND_AUTO) {
+	if (backend_type == GT_BACKEND_LIBUSBG || backend_type == GT_BACKEND_AUTO) {
 		usbg_state *s = NULL;
 		int r;
 
+		backend_ctx.backend = &gt_backend_libusbg;
+
 		r = usbg_init("/sys/kernel/config", &s);
 		if (r != USBG_SUCCESS) {
-			fprintf(stderr, "Unable to initialize libusbg backend: %s\n", usbg_strerror(r));
+			fprintf(stderr, "Unable to initialize libusbg backend_type: %s\n", usbg_strerror(r));
 			goto out_libusbg;
 		}
 
-		backend_ctx.backend = GT_BACKEND_LIBUSBG;
+		backend_ctx.backend_type = GT_BACKEND_LIBUSBG;
 		backend_ctx.libusbg_state = s;
 		return 0;
 	}

@@ -60,7 +60,7 @@ static int gt_config_create_func(void *data)
 	dt = (struct gt_config_create_data *)data;
 
 	/* TODO implement -f option */
-	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
 		GVariant *gret;
 		GError *error = NULL;
 		_cleanup_g_free_ gchar *path = NULL;
@@ -442,7 +442,7 @@ static int gt_config_add_func(void *data)
 
 	dt = (struct gt_config_add_del_data *)data;
 
-	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
 		_cleanup_g_free_ gchar *gpath = NULL;
 		_cleanup_g_free_ gchar *fpath = NULL;
 		_cleanup_g_free_ gchar *cpath = NULL;
@@ -535,7 +535,7 @@ static int gt_config_add_func(void *data)
 		g_variant_get(gret, "(b)", &function_added);
 		g_variant_unref(gret);
 
-	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+	} else if (backend_ctx.backend_type == GT_BACKEND_LIBUSBG) {
 		int usbg_ret = USBG_SUCCESS;
 		usbg_function_type f_type;
 		usbg_gadget *g;

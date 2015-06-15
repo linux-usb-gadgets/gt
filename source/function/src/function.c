@@ -19,22 +19,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <glib.h>
-#include <gio/gio.h>
 
 #include "function.h"
 #include "common.h"
 #include "parser.h"
 #include "backend.h"
-#include <gio/gio.h>
 
-struct gt_func_create_data {
-	const char *gadget;
-	const char *type;
-	const char *name;
-	int opts;
-	struct gt_setting *attrs;
-};
+#define GET_EXECUTABLE(func) \
+	(backend_ctx.backend->function->func ? \
+	 backend_ctx.backend->function->func : \
+	 gt_function_backend_not_implemented.func)
 
 static void gt_func_create_destructor(void *data)
 {
@@ -46,96 +40,6 @@ static void gt_func_create_destructor(void *data)
 	dt = (struct gt_func_create_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_func_create_func(void *data)
-{
-	struct gt_func_create_data *dt;
-
-	dt = (struct gt_func_create_data *)data;
-
-	if (dt->attrs->variable) {
-		/* TODO add support for attributes */
-		printf("Attributes are not supported now\n");
-		return -1;
-	}
-
-	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
-		gchar *gadget_objpath = NULL;
-		GError *err = NULL;
-		GVariant *v;
-
-		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						"org.usb.gadgetd",
-						"/org/usb/Gadget",
-						"org.usb.device.GadgetManager",
-						"FindGadgetByName",
-						g_variant_new("(s)", dt->gadget),
-						NULL,
-						G_DBUS_CALL_FLAGS_NONE,
-						-1,
-						NULL,
-						&err);
-		if (err) {
-			fprintf(stderr, "Unable to find gadget %s: %s\n", dt->gadget, err->message);
-			return -1;
-		}
-
-		g_variant_get(v, "(o)", &gadget_objpath);
-		g_variant_unref(v);
-
-		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						"org.usb.gadgetd",
-						gadget_objpath,
-						"org.usb.device.Gadget.FunctionManager",
-						"CreateFunction",
-						g_variant_new("(ss)", dt->name, dt->type),
-						NULL,
-						G_DBUS_CALL_FLAGS_NONE,
-						-1,
-						NULL,
-						&err);
-		if (err) {
-			fprintf(stderr, "Unable to create function: %s\n", err->message);
-			g_free(gadget_objpath);
-			return -1;
-		}
-
-		g_free(gadget_objpath);
-		g_variant_unref(v);
-		return 0;
-
-	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
-		usbg_gadget *g;
-		usbg_function_type f_type;
-		usbg_function *f;
-		int r;
-
-		f_type = usbg_lookup_function_type(dt->type);
-		if (f_type < 0) {
-			fprintf(stderr, "Unable to find function %s: %s\n",
-				dt->type, usbg_strerror(f_type));
-			return -1;
-		}
-
-		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
-		if (!g) {
-			fprintf(stderr, "Unable to find gadget %s\n",
-				dt->gadget);
-			return -1;
-		}
-
-		r = usbg_create_function(g, f_type, dt->name, NULL, &f);
-		if (r < 0) {
-			fprintf(stderr, "Unable to create function: %s\n",
-				usbg_strerror(r));
-			return -1;
-		}
-
-		return 0;
-	}
-
-	return -1;
 }
 
 static int gt_func_create_help(void *data)
@@ -173,21 +77,14 @@ static void gt_parse_func_create(const Command *cmd, int argc,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_func_create_func, (void *)dt,
-			gt_func_create_destructor);
+	executable_command_set(exec, GET_EXECUTABLE(create),
+			(void *)dt, gt_func_create_destructor);
 
 	return;
 out:
 	gt_func_create_destructor(dt);
 	executable_command_set(exec, gt_func_create_help, data, NULL);
 }
-
-struct gt_func_rm_data {
-	const char *gadget;
-	const char *type;
-	const char *name;
-	int opts;
-};
 
 static void gt_func_rm_destructor(void *data)
 {
@@ -200,18 +97,6 @@ static void gt_func_rm_destructor(void *data)
 	free(dt);
 }
 
-static int gt_func_rm_func(void *data)
-{
-	struct gt_func_rm_data *dt;
-
-	dt = (struct gt_func_rm_data *)data;
-	printf("Func rm called successfully. Not implemented.\n");
-	printf("gadget=%s, type=%s, name=%s, recursive=%d, force=%d\n",
-		dt->gadget, dt->type, dt->name, !!(dt->opts & GT_RECURSIVE),
-		!!(dt->opts & GT_FORCE));
-
-	return 0;
-}
 
 static int gt_func_rm_help(void *data)
 {
@@ -244,62 +129,13 @@ static void gt_parse_func_rm(const Command *cmd, int argc,
 	if (ind != argc)
 		goto out;
 
-	executable_command_set(exec, gt_func_rm_func, (void *)dt,
-			gt_func_rm_destructor);
+	executable_command_set(exec, GET_EXECUTABLE(rm),
+			(void *)dt, gt_func_rm_destructor);
 
 	return;
 out:
 	gt_func_rm_destructor(dt);
 	executable_command_set(exec, gt_func_rm_help, data, NULL);
-}
-
-
-static int gt_func_list_types_func(void *data)
-{
-	int i;
-
-	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
-		GError *err = NULL;
-		GVariantIter *iter;
-		GVariant *v;
-		gchar *s;
-
-		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						"org.usb.gadgetd",
-						"/org/usb/Gadget",
-						"org.usb.device.GadgetManager",
-						"ListAvailableFunctions",
-						NULL,
-						NULL,
-						G_DBUS_CALL_FLAGS_NONE,
-						-1,
-						NULL,
-						&err);
-
-		if (err) {
-			fprintf(stderr, "Unable to get function list: %s\n", err->message);
-			return -1;
-		}
-
-		printf("Discovered functions:\n");
-		g_variant_get(v, "(as)", &iter);
-		while (g_variant_iter_loop(iter, "s", &s))
-		       printf("  %s\n", s);
-
-		g_variant_iter_free(iter);
-		g_variant_unref(v);
-
-		return 0;
-
-	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
-		printf("Functions known by library:\n");
-		for (i = USBG_FUNCTION_TYPE_MIN; i < USBG_FUNCTION_TYPE_MAX; i++)
-			printf("  %s\n", usbg_get_function_type_str(i));
-
-		return 0;
-	}
-
-	return -1;
 }
 
 static int gt_func_list_types_help(void *data)
@@ -314,18 +150,12 @@ static void gt_parse_func_list_types(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
 	if (argc == 0)
-		executable_command_set(exec, gt_func_list_types_func, NULL, NULL);
+		executable_command_set(exec, GET_EXECUTABLE(list_types),
+				NULL, NULL);
 	else
 		executable_command_set(exec, gt_func_list_types_help, NULL, NULL);
 
 }
-
-struct gt_func_get_data {
-	const char *gadget;
-	const char *type;
-	const char *name;
-	const char **attrs;
-};
 
 static void gt_func_get_destructor(void *data)
 {
@@ -338,22 +168,6 @@ static void gt_func_get_destructor(void *data)
 	free(dt);
 }
 
-static int gt_func_get_func(void *data)
-{
-	struct gt_func_get_data *dt;
-	const char **ptr;
-
-	dt = (struct gt_func_get_data *)data;
-	printf("Func get called successfully. Not implemented.\n");
-	printf("gadget=%s, type=%s, name=%s, attrs=",
-		dt->gadget, dt->type, dt->name);
-
-	for (ptr = dt->attrs; *ptr; ptr++)
-		printf("%s, ", *ptr);
-	putchar('\n');
-
-	return 0;
-}
 
 static int gt_func_get_help(void *data)
 {
@@ -388,7 +202,7 @@ static void gt_parse_func_get(const Command *cmd, int argc,
 	for (i = 0; argv[i]; i++)
 		dt->attrs[i] = argv[i];
 
-	executable_command_set(exec, gt_func_get_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 			gt_func_get_destructor);
 
 	return;
@@ -396,13 +210,6 @@ out:
 	gt_func_get_destructor(dt);
 	executable_command_set(exec, gt_func_get_help, data, NULL);
 }
-
-struct gt_func_set_data {
-	const char *gadget;
-	const char *type;
-	const char *name;
-	struct gt_setting *attrs;
-};
 
 static void gt_func_set_destructor(void *data)
 {
@@ -413,22 +220,6 @@ static void gt_func_set_destructor(void *data)
 	dt = (struct gt_func_set_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_func_set_func(void *data)
-{
-	struct gt_func_set_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_func_set_data *)data;
-	printf("Func set called successfully. Not implemented.\n");
-	printf("gadget=%s, type=%s, name=%s", dt->gadget, dt->type, dt->name);
-
-	for (ptr = dt->attrs; ptr->variable; ptr++)
-		printf(", %s=%s", ptr->variable, ptr->value);
-	putchar('\n');
-
-	return 0;
 }
 
 static int gt_func_set_help(void *data)
@@ -461,7 +252,7 @@ static void gt_parse_func_set(const Command *cmd, int argc,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_func_set_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(set), (void *)dt,
 			gt_func_set_destructor);
 
 	return;
@@ -470,12 +261,6 @@ out:
 	executable_command_set(exec, gt_func_get_help, data, NULL);
 }
 
-struct gt_func_func_data {
-	const char *gadget;
-	const char *type;
-	const char *name;
-	int opts;
-};
 
 static void gt_func_func_destructor(void *data)
 {
@@ -485,22 +270,6 @@ static void gt_func_func_destructor(void *data)
 		return;
 	dt = (struct gt_func_func_data *)data;
 	free(dt);
-}
-
-static int gt_func_func_func(void *data)
-{
-	struct gt_func_func_data *dt;
-
-	dt = (struct gt_func_func_data *)data;
-	printf("Func func called successfully. Not implemented.\n");
-	printf("gadget=%s", dt->gadget);
-	if (dt->type)
-		printf(", type=%s", dt->type);
-	if (dt->name)
-		printf(", name=%s", dt->name);
-	printf(", verbose=%d\n", !!(dt->opts & GT_VERBOSE));
-
-	return 0;
 }
 
 static int gt_func_func_help(void *data)
@@ -549,43 +318,12 @@ static void gt_parse_func_func(const Command *cmd, int argc,
 		dt->name = argv[ind++];
 	}
 
-	executable_command_set(exec, gt_func_func_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(func), (void *)dt,
 			gt_func_func_destructor);
 	return;
 out:
 	gt_func_func_destructor(dt);
 	executable_command_set(exec, gt_func_func_help, data, NULL);
-}
-
-struct gt_func_load_data {
-	const char *name;
-	const char *gadget;
-	const char *func;
-	const char *file;
-	const char *path;
-	int opts;
-};
-
-static int gt_func_load_func(void *data)
-{
-	struct gt_func_load_data *dt;
-
-	dt = (struct gt_func_load_data *)data;
-	printf("Func load called succesfully. Not implemented.\n");
-	if (dt->name)
-		printf("name=%s, ", dt->name);
-	if (dt->gadget)
-		printf("gadget=%s, ", dt->gadget);
-	if (dt->func)
-		printf("func=%s, ", dt->func);
-	if (dt->file)
-		printf("file=%s, ", dt->file);
-	if (dt->path)
-		printf("path=%s, ", dt->path);
-	printf("force=%d, stdin=%d\n", !!(dt->opts & GT_FORCE),
-			!!(dt->opts & GT_STDIN));
-
-	return 0;
 }
 
 static int gt_func_load_help(void *data)
@@ -659,22 +397,13 @@ static void gt_parse_func_load(const Command *cmd, int argc,
 	if (optind < argc)
 		dt->func = argv[optind];
 
-	executable_command_set(exec, gt_func_load_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(load),
+			(void *)dt, free);
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_func_save_data {
-	const char *gadget;
-	const char *func;
-	const char *name;
-	const char *file;
-	const char *path;
-	int opts;
-	struct gt_setting *attrs;
-};
 
 static void gt_func_save_destructor(void *data)
 {
@@ -686,34 +415,6 @@ static void gt_func_save_destructor(void *data)
 	dt = (struct gt_func_save_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_func_save_func(void *data)
-{
-	struct gt_func_save_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_func_save_data *)data;
-
-	printf("Func save called successfully. Not implemented.\n");
-	if (dt->gadget)
-		printf("gadget=%s, ", dt->gadget);
-	if (dt->func)
-		printf("func=%s, ", dt->func);
-	if (dt->name)
-		printf("name=%s, ", dt->name);
-	if (dt->file)
-		printf("file=%s, ", dt->file);
-	if (dt->path)
-		printf("path=%s, ", dt->path);
-	printf("force=%d, stdout=%d", !!(dt->opts & GT_FORCE),
-			!!(dt->opts & GT_STDOUT));
-
-	for (ptr = dt->attrs; ptr->variable; ptr++)
-		printf(", %s=%s", ptr->variable, ptr->value);
-	putchar('\n');
-
-	return 0;
 }
 
 static int gt_func_save_help(void *data)
@@ -786,7 +487,7 @@ static void gt_parse_func_save(const Command *cmd, int argc,
 	if (c < 0)
 		goto out;
 
-	executable_command_set(exec, gt_func_save_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(save), (void *)dt,
 			gt_func_save_destructor);
 
 	return;
@@ -799,24 +500,6 @@ int gt_func_help(void *data)
 {
 	printf("Function help function\n");
 	return -1;
-}
-
-struct gt_func_template_data {
-	const char *name;
-	int opts;
-};
-
-static int gt_func_template_func(void *data)
-{
-	struct gt_func_template_data *dt;
-
-	dt = (struct gt_func_template_data *)data;
-	printf("Func template called successfully. Not implemented.\n");
-	if (dt->name)
-		printf("name=%s, ", dt->name);
-	printf("verbose=%d\n", !!(dt->opts & GT_VERBOSE));
-
-	return 0;
 }
 
 static int gt_func_template_help(void *data)
@@ -845,17 +528,13 @@ static void gt_parse_func_template(const Command *cmd, int argc,
 
 	dt->name = argv[ind++];
 
-	executable_command_set(exec, gt_func_template_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(template_default),
+			(void *)dt, free);
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_func_template_get_data {
-	const char *name;
-	const char **attrs;
-};
 
 static void gt_func_template_get_destructor(void *data)
 {
@@ -866,21 +545,6 @@ static void gt_func_template_get_destructor(void *data)
 	dt = (struct gt_func_template_get_data *)data;
 	free(dt->attrs);
 	free(dt);
-}
-
-static int gt_func_template_get_func(void *data)
-{
-	struct gt_func_template_get_data *dt;
-	const char **ptr;
-
-	dt = (struct gt_func_template_get_data *)data;
-	printf("Func template get called successfully. Not implemented.\n");
-	printf("name=%s, attrs=", dt->name);
-	for (ptr = dt->attrs; *ptr; ptr++)
-		printf("%s, ", *ptr);
-	putchar('\n');
-
-	return 0;
 }
 
 static int gt_func_template_get_help(void *data)
@@ -912,19 +576,14 @@ static void gt_parse_func_template_get(const Command *cmd, int argc,
 	for (i = 0; argv[i]; i++)
 		dt->attrs[i] = argv[i];
 
-	executable_command_set(exec, gt_func_template_get_func, (void *)dt,
-			gt_func_template_get_destructor);
+	executable_command_set(exec, GET_EXECUTABLE(template_get),
+			(void *)dt, gt_func_template_get_destructor);
 	return;
 
 out:
 	gt_func_template_get_destructor(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_func_template_set_data {
-	const char *name;
-	struct gt_setting *attrs;
-};
 
 static void gt_func_template_set_destructor(void *data)
 {
@@ -935,22 +594,6 @@ static void gt_func_template_set_destructor(void *data)
 	dt = (struct gt_func_template_set_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_func_template_set_func(void *data)
-{
-	struct gt_func_template_set_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_func_template_set_data *)data;
-	printf("Func template set called successfully. Not implemented.\n");
-	printf("name=%s", dt->name);
-
-	for (ptr = dt->attrs; ptr->variable; ptr++)
-		printf(", %s=%s", ptr->variable, ptr->value);
-	putchar('\n');
-
-	return 0;
 }
 
 static int gt_func_template_set_help(void *data)
@@ -977,24 +620,13 @@ static void gt_parse_func_template_set(const Command *cmd, int argc,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_func_template_set_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_set), (void *)dt,
 			gt_func_template_set_destructor);
 	return;
 
 out:
 	gt_func_template_set_destructor(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-static int gt_func_template_rm_func(void *data)
-{
-	const char *dt;
-
-	dt = (const char *)data;
-	printf("Func template rm called successfully. Not implemented.\n");
-	printf("name=%s\n", dt);
-
-	return 0;
 }
 
 static int gt_func_template_rm_help(void *data)
@@ -1013,7 +645,7 @@ static void gt_parse_func_template_rm(const Command *cmd, int argc,
 
 	name = argv[0];
 
-	executable_command_set(exec, gt_func_template_rm_func, (void *)name, NULL);
+	executable_command_set(exec, GET_EXECUTABLE(template_rm), (void *)name, NULL);
 
 	return;
 out:

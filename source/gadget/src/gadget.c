@@ -144,7 +144,7 @@ static int gt_gadget_create_func(void *data)
 		}
 	}
 
-	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
 
 		GVariantBuilder *b;
 		GVariant *gattrs;
@@ -197,7 +197,7 @@ static int gt_gadget_create_func(void *data)
 		g_variant_unref(v);
 		return 0;
 
-	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+	} else if (backend_ctx.backend_type == GT_BACKEND_LIBUSBG) {
 		usbg_gadget *g;
 
 		r = usbg_create_gadget(backend_ctx.libusbg_state,
@@ -499,7 +499,7 @@ static int gt_gadget_enable_func(void *data)
 
 	dt = (struct gt_gadget_enable_data *)data;
 
-	if (backend_ctx.backend == GT_BACKEND_GADGETD) {
+	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
 		/* TODO add support for enabling well known UDC */
 		GVariant *gret;
 		GError *error = NULL;
@@ -596,7 +596,7 @@ out:
 			return -1;
 		}
 
-	} else if (backend_ctx.backend == GT_BACKEND_LIBUSBG) {
+	} else if (backend_ctx.backend_type == GT_BACKEND_LIBUSBG) {
 		usbg_gadget *g;
 		usbg_udc *udc = NULL;
 		int usbg_ret;
