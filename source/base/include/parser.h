@@ -82,7 +82,8 @@ enum gt_option_flags {
 	GT_VERBOSE = 4,
 	GT_OFF = 8,
 	GT_STDIN = 16,
-	GT_STDOUT = 32
+	GT_STDOUT = 32,
+	GT_HELP = 64,
 };
 
 /**

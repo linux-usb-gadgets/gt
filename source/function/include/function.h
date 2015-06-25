@@ -95,6 +95,7 @@ struct gt_func_get_data {
 	const char *type;
 	const char *name;
 	const char **attrs;
+	int opts;
 };
 
 struct gt_func_set_data {
@@ -102,6 +103,7 @@ struct gt_func_set_data {
 	const char *type;
 	const char *name;
 	struct gt_setting *attrs;
+	int opts;
 };
 
 struct gt_func_func_data {
@@ -138,11 +140,13 @@ struct gt_func_template_data {
 struct gt_func_template_get_data {
 	const char *name;
 	const char **attrs;
+	int opts;
 };
 
 struct gt_func_template_set_data {
 	const char *name;
 	struct gt_setting *attrs;
+	int opts;
 };
 
 /**
