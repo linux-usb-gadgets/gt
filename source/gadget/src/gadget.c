@@ -38,7 +38,8 @@ static const struct {
 
 struct gt_gadget_create_data {
 	const char *name;
-	struct gt_setting *attrs;
+	int attr_val[USBG_GADGET_ATTR_MAX];
+	char *str_val[ARRAY_SIZE(strs)];
 	int opts;
 };
 
@@ -49,7 +50,6 @@ static void gt_gadget_create_destructor(void *data)
 	if (data == NULL)
 		return;
 	dt = (struct gt_gadget_create_data *)data;
-	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
 }
 
@@ -92,57 +92,10 @@ static int attr_val_in_range(usbg_gadget_attr a, unsigned long int val)
 static int gt_gadget_create_func(void *data)
 {
 	struct gt_gadget_create_data *dt;
-	struct gt_setting *setting;
-	int attr_val[USBG_GADGET_ATTR_MAX];
-	char *str_val[G_N_ELEMENTS(strs)];
-	_Bool iter;
 	int i;
 	int r;
 
-	for (i = 0; i < G_N_ELEMENTS(attr_val); i++)
-		attr_val[i] = -1;
-	memset(str_val, 0, sizeof(str_val));
-
 	dt = (struct gt_gadget_create_data *)data;
-
-	for (setting = dt->attrs; setting->variable; setting++) {
-		int attr_id;
-
-		iter = TRUE;
-
-		attr_id = usbg_lookup_gadget_attr(setting->variable);
-		if (attr_id >= 0) {
-			unsigned long int val;
-			char *endptr = NULL;
-
-			errno = 0;
-			val = strtoul(setting->value, &endptr, 0);
-			if (errno
-			    || *setting->value == 0
-			    || (endptr && *endptr != 0)
-			    || attr_val_in_range(attr_id, val) == 0) {
-
-				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
-					setting->value, setting->variable);
-				return -1;
-			}
-
-			attr_val[attr_id] = val;
-			iter = FALSE;
-		}
-		for (i = 0; iter && i < G_N_ELEMENTS(strs); i++) {
-			if (streq(setting->variable, strs[i].name)) {
-				str_val[i] = setting->value;
-				iter = FALSE;
-				break;
-			}
-		}
-
-		if (iter) {
-			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
-			return -1;
-		}
-	}
 
 	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
 
@@ -154,23 +107,23 @@ static int gt_gadget_create_func(void *data)
 
 		b = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 		for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++) {
-			if (attr_val[i] == -1)
+			if (dt->attr_val[i] == -1)
 				continue;
 
 			g_variant_builder_add(b, "{sv}",
 					      usbg_get_gadget_attr_str(i),
-					      g_variant_new(attr_type_get(i), attr_val[i]));
+					      g_variant_new(attr_type_get(i), dt->attr_val[i]));
 		}
 		gattrs = g_variant_builder_end(b);
 
 		b = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
 		for (i = 0; i < G_N_ELEMENTS(strs); i++) {
-			if (str_val[i] == NULL)
+			if (dt->str_val[i] == NULL)
 				continue;
 
 			g_variant_builder_add(b, "{sv}",
 					      strs[i].name,
-					      g_variant_new("s", str_val[i]));
+					      g_variant_new("s", dt->str_val[i]));
 		}
 		gstrs = g_variant_builder_end(b);
 
@@ -212,10 +165,10 @@ static int gt_gadget_create_func(void *data)
 		}
 
 		for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++) {
-			if (attr_val[i] == -1)
+			if (dt->attr_val[i] == -1)
 				continue;
 
-			r = usbg_set_gadget_attr(g, i, attr_val[i]);
+			r = usbg_set_gadget_attr(g, i, dt->attr_val[i]);
 			if (r != USBG_SUCCESS) {
 				fprintf(stderr, "Unable to set attribute %s: %s\n",
 					usbg_get_gadget_attr_str(i),
@@ -224,11 +177,11 @@ static int gt_gadget_create_func(void *data)
 			}
 		}
 
-		for (i = 0; i < G_N_ELEMENTS(str_val); i++) {
-			if (str_val[i] == NULL)
+		for (i = 0; i < G_N_ELEMENTS(dt->str_val); i++) {
+			if (dt->str_val[i] == NULL)
 				continue;
 
-			r = strs[i].set_fn(g, LANG_US_ENG, str_val[i]);
+			r = strs[i].set_fn(g, LANG_US_ENG, dt->str_val[i]);
 			if (r != USBG_SUCCESS) {
 				fprintf(stderr, "Unable to set string %s: %s\n",
 					strs[i].name,
@@ -275,6 +228,9 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 	int ind;
 	int c;
 	int avaible_opts = GT_FORCE;
+	struct gt_setting *setting, *attrs;
+	_Bool iter;
+	int i;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
@@ -289,14 +245,61 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 
 	dt->name = argv[ind++];
 
-	c = gt_parse_setting_list(&dt->attrs, argc - ind, argv + ind);
+	c = gt_parse_setting_list(&attrs, argc - ind, argv + ind);
 	if (c < 0)
 		goto out;
 
+	for (i = 0; i < G_N_ELEMENTS(dt->attr_val); i++)
+		dt->attr_val[i] = -1;
+	memset(dt->str_val, 0, sizeof(dt->str_val));
+
+	for (setting = attrs; setting->variable; setting++) {
+		int attr_id;
+
+		iter = TRUE;
+
+		attr_id = usbg_lookup_gadget_attr(setting->variable);
+		if (attr_id >= 0) {
+			unsigned long int val;
+			char *endptr = NULL;
+
+			errno = 0;
+			val = strtoul(setting->value, &endptr, 0);
+			if (errno
+			    || *setting->value == 0
+			    || (endptr && *endptr != 0)
+			    || attr_val_in_range(attr_id, val) == 0) {
+
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				goto out;
+			}
+
+			dt->attr_val[attr_id] = val;
+			iter = FALSE;
+		}
+
+		for (i = 0; iter && i < G_N_ELEMENTS(strs); i++) {
+			if (streq(setting->variable, strs[i].name)) {
+				dt->str_val[i] = setting->value;
+				iter = FALSE;
+				break;
+			}
+		}
+
+		if (iter) {
+			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
+			goto out;
+		}
+	}
+
 	executable_command_set(exec, gt_gadget_create_func,
 				(void *)dt, gt_gadget_create_destructor);
+
+	gt_setting_list_cleanup(attrs);
 	return;
 out:
+	gt_setting_list_cleanup(attrs);
 	gt_gadget_create_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
