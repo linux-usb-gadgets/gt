@@ -27,33 +27,32 @@
 #include "parser.h"
 #include "backend.h"
 
-static const struct {
-	char *name;
-	int (*set_fn)(usbg_gadget *, int, const char *);
-} strs[] = {
+#define GET_EXECUTABLE(func) \
+	(backend_ctx.backend->gadget->func ? \
+	 backend_ctx.backend->gadget->func : \
+	 gt_gadget_backend_not_implemented.func)
+
+const struct gt_gadget_str gadget_strs[] = {
 	{ "product", usbg_set_gadget_product },
 	{ "manufacturer", usbg_set_gadget_manufacturer },
 	{ "serialnumber", usbg_set_gadget_serial_number },
 };
 
-struct gt_gadget_create_data {
-	const char *name;
-	int attr_val[USBG_GADGET_ATTR_MAX];
-	char *str_val[ARRAY_SIZE(strs)];
-	int opts;
-};
-
 static void gt_gadget_create_destructor(void *data)
 {
 	struct gt_gadget_create_data *dt;
+	int i;
 
 	if (data == NULL)
 		return;
 	dt = (struct gt_gadget_create_data *)data;
+	for (i = 0; i < GT_GADGET_STRS_COUNT; i++)
+		free(dt->str_val[i]);
+
 	free(dt);
 }
 
-static char *attr_type_get(usbg_gadget_attr a)
+char *attr_type_get(usbg_gadget_attr a)
 {
 	switch (a) {
 	case B_DEVICE_CLASS:
@@ -88,118 +87,6 @@ static int attr_val_in_range(usbg_gadget_attr a, unsigned long int val)
 		return 0;
 }
 
-
-static int gt_gadget_create_func(void *data)
-{
-	struct gt_gadget_create_data *dt;
-	int i;
-	int r;
-
-	dt = (struct gt_gadget_create_data *)data;
-
-	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
-
-		GVariantBuilder *b;
-		GVariant *gattrs;
-		GVariant *gstrs;
-		GVariant *v;
-		GError *err = NULL;
-
-		b = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
-		for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++) {
-			if (dt->attr_val[i] == -1)
-				continue;
-
-			g_variant_builder_add(b, "{sv}",
-					      usbg_get_gadget_attr_str(i),
-					      g_variant_new(attr_type_get(i), dt->attr_val[i]));
-		}
-		gattrs = g_variant_builder_end(b);
-
-		b = g_variant_builder_new(G_VARIANT_TYPE("a{sv}"));
-		for (i = 0; i < G_N_ELEMENTS(strs); i++) {
-			if (dt->str_val[i] == NULL)
-				continue;
-
-			g_variant_builder_add(b, "{sv}",
-					      strs[i].name,
-					      g_variant_new("s", dt->str_val[i]));
-		}
-		gstrs = g_variant_builder_end(b);
-
-		v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						"org.usb.gadgetd",
-						"/org/usb/Gadget",
-						"org.usb.device.GadgetManager",
-						"CreateGadget",
-						g_variant_new("(s@a{sv}@a{sv})",
-							      dt->name,
-							      gattrs,
-							      gstrs),
-						NULL,
-						G_DBUS_CALL_FLAGS_NONE,
-						-1,
-						NULL,
-						&err);
-
-		if (err) {
-			fprintf(stderr, "Unable to create gadget: %s\n", err->message);
-			return -1;
-		}
-
-		g_variant_unref(v);
-		return 0;
-
-	} else if (backend_ctx.backend_type == GT_BACKEND_LIBUSBG) {
-		usbg_gadget *g;
-
-		r = usbg_create_gadget(backend_ctx.libusbg_state,
-				       dt->name,
-				       NULL,
-				       NULL,
-				       &g);
-		if (r != USBG_SUCCESS) {
-			fprintf(stderr, "Unable to create gadget %s: %s\n",
-				dt->name, usbg_strerror(r));
-			return -1;
-		}
-
-		for (i = USBG_GADGET_ATTR_MIN; i < USBG_GADGET_ATTR_MAX; i++) {
-			if (dt->attr_val[i] == -1)
-				continue;
-
-			r = usbg_set_gadget_attr(g, i, dt->attr_val[i]);
-			if (r != USBG_SUCCESS) {
-				fprintf(stderr, "Unable to set attribute %s: %s\n",
-					usbg_get_gadget_attr_str(i),
-					usbg_strerror(r));
-				goto err_usbg;
-			}
-		}
-
-		for (i = 0; i < G_N_ELEMENTS(dt->str_val); i++) {
-			if (dt->str_val[i] == NULL)
-				continue;
-
-			r = strs[i].set_fn(g, LANG_US_ENG, dt->str_val[i]);
-			if (r != USBG_SUCCESS) {
-				fprintf(stderr, "Unable to set string %s: %s\n",
-					strs[i].name,
-					usbg_strerror(r));
-				goto err_usbg;
-			}
-		}
-
-		return 0;
-
-	err_usbg:
-		usbg_rm_gadget(g, USBG_RM_RECURSE);
-		return -1;
-	}
-
-	return -1;
-}
-
 static int gt_gadget_create_help(void *data)
 {
 	int i;
@@ -215,8 +102,8 @@ static int gt_gadget_create_help(void *data)
 
 	printf("Device strings (en_US locale):\n");
 
-	for (i = 0; i < G_N_ELEMENTS(strs); i++)
-		printf("  %s\n", strs[i].name);
+	for (i = 0; i < GT_GADGET_STRS_COUNT; i++)
+		printf("  %s\n", gadget_strs[i].name);
 
 	return 0;
 }
@@ -228,7 +115,7 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 	int ind;
 	int c;
 	int avaible_opts = GT_FORCE;
-	struct gt_setting *setting, *attrs;
+	struct gt_setting *setting, *attrs = NULL;
 	_Bool iter;
 	int i;
 
@@ -249,7 +136,7 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 	if (c < 0)
 		goto out;
 
-	for (i = 0; i < G_N_ELEMENTS(dt->attr_val); i++)
+	for (i = 0; i < USBG_GADGET_ATTR_MAX; i++)
 		dt->attr_val[i] = -1;
 	memset(dt->str_val, 0, sizeof(dt->str_val));
 
@@ -279,8 +166,8 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 			iter = FALSE;
 		}
 
-		for (i = 0; iter && i < G_N_ELEMENTS(strs); i++) {
-			if (streq(setting->variable, strs[i].name)) {
+		for (i = 0; iter && i < GT_GADGET_STRS_COUNT; i++) {
+			if (streq(setting->variable, gadget_strs[i].name)) {
 				dt->str_val[i] = setting->value;
 				iter = FALSE;
 				break;
@@ -293,10 +180,9 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 		}
 	}
 
-	executable_command_set(exec, gt_gadget_create_func,
+	executable_command_set(exec, GET_EXECUTABLE(create),
 				(void *)dt, gt_gadget_create_destructor);
 
-	gt_setting_list_cleanup(attrs);
 	return;
 out:
 	gt_setting_list_cleanup(attrs);
@@ -304,26 +190,10 @@ out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
-struct gt_gadget_rm_data {
-	const char *name;
-	int opts;
-};
-
 static int gt_gadget_rm_help(void *data)
 {
 	printf("Gadget rm help.\n");
 	return -1;
-}
-
-static int gt_gadget_rm_func(void *data)
-{
-	struct gt_gadget_rm_data *dt;
-
-	dt = (struct gt_gadget_rm_data *)data;
-	printf("Gadget rm called successfully. Not implemented.\n");
-	printf("name = %s, force = %d, recursive = %d\n",
-		dt->name, !!(dt->opts & GT_FORCE), !!(dt->opts & GT_RECURSIVE));
-	return 0;
 }
 
 static void gt_parse_gadget_rm(const Command *cmd, int argc, char **argv,
@@ -344,18 +214,13 @@ static void gt_parse_gadget_rm(const Command *cmd, int argc, char **argv,
 	if (argc - ind != 1)
 		goto out;
 	dt->name = argv[ind];
-	executable_command_set(exec, gt_gadget_rm_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(rm), (void *)dt,
 			free);
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_gadget_get_data {
-	const char *name;
-	const char **attrs;
-};
 
 static void gt_gadget_get_destructor(void *data)
 {
@@ -367,25 +232,6 @@ static void gt_gadget_get_destructor(void *data)
 
 	free(dt->attrs);
 	free(dt);
-}
-
-static int gt_gadget_get_func(void *data)
-{
-	struct gt_gadget_get_data *dt;
-	const char **ptr;
-
-	dt = (struct gt_gadget_get_data *)data;
-	printf("Gadget get called successfully. Not implemented yet.\n");
-	printf("name = %s, attrs = ", dt->name);
-
-	ptr = dt->attrs;
-	while (*ptr) {
-		printf("%s, ", *ptr);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_gadget_get_help(void *data)
@@ -417,7 +263,7 @@ static void gt_parse_gadget_get(const Command *cmd, int argc, char **argv,
 		dt->attrs[i] = argv[i];
 	}
 
-	executable_command_set(exec, gt_gadget_get_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 			gt_gadget_get_destructor);
 
 	return;
@@ -425,11 +271,6 @@ out:
 	gt_gadget_get_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_gadget_set_data {
-	const char *name;
-	struct gt_setting *attrs;
-};
 
 static void gt_gadget_set_destructor(void *data)
 {
@@ -440,23 +281,6 @@ static void gt_gadget_set_destructor(void *data)
 	dt = (struct gt_gadget_set_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_gadget_set_func(void *data)
-{
-	struct gt_gadget_set_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_gadget_set_data *)data;
-	printf("Gadget set called successfully. Not implemented.\n");
-	printf("name = %s", dt->name);
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
-	}
-	putchar('\n');
-	return 0;
 }
 
 static int gt_gadget_set_help(void *data)
@@ -483,149 +307,12 @@ static void gt_parse_gadget_set(const Command *cmd, int argc, char **argv,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_gadget_set_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(set), (void *)dt,
 			gt_gadget_set_destructor);
 	return;
 out:
 	gt_gadget_set_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_gadget_enable_data {
-	const char *gadget;
-	const char *udc;
-};
-
-static int gt_gadget_enable_func(void *data)
-{
-	struct gt_gadget_enable_data *dt;
-
-	dt = (struct gt_gadget_enable_data *)data;
-
-	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
-		/* TODO add support for enabling well known UDC */
-		GVariant *gret;
-		GError *error = NULL;
-		GDBusObjectManager *manager;
-		GList *objects;
-		GList *l;
-		const gchar *obj_path = NULL;
-		_cleanup_g_free_ gchar *g_path = NULL;
-		const gchar *msg = NULL;
-		gboolean out_gadget_enabled = 0;
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   "/org/usb/Gadget",
-						   "org.usb.device.GadgetManager",
-						   "FindGadgetByName",
-						   g_variant_new("(s)",
-						                 dt->gadget),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-
-		if (error) {
-			fprintf(stderr, "Failed to get gadget, %s\n", error->message);
-			return -1;
-		}
-
-		g_variant_get(gret, "(o)", &g_path);
-		g_variant_unref(gret);
-
-		manager = g_dbus_object_manager_client_new_sync(backend_ctx.gadgetd_conn,
-						       G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
-						       "org.usb.gadgetd",
-						       "/org/usb/Gadget",
-						       NULL,
-						       NULL,
-						       NULL,
-						       NULL,
-						       &error);
-
-		if (error) {
-			fprintf(stderr, "Failed to get dbus object manager, %s\n", error->message);
-			return -1;
-		}
-
-		/* get first "free" udc and enable gadget */
-		objects = g_dbus_object_manager_get_objects(manager);
-		for (l = objects; l != NULL; l = l->next)
-		{
-			GDBusObject *object = G_DBUS_OBJECT(l->data);
-			obj_path = g_dbus_object_get_object_path(G_DBUS_OBJECT(object));
-
-			if (g_str_has_prefix(obj_path, "/org/usb/Gadget/UDC")) {
-				obj_path = g_dbus_object_get_object_path(G_DBUS_OBJECT(object));
-
-				gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-								   "org.usb.gadgetd",
-								   obj_path,
-								   "org.usb.device.UDC",
-								   "EnableGadget",
-								   g_variant_new("(o)",
-								                 g_path),
-								   NULL,
-								   G_DBUS_CALL_FLAGS_NONE,
-								   -1,
-								   NULL,
-								   &error);
-				if (error) {
-					msg = error->message;
-					goto out;
-				}
-				g_variant_get(gret, "(b)", &out_gadget_enabled);
-				if (out_gadget_enabled) {
-					g_variant_unref(gret);
-					goto out;
-				}
-			}
-		}
-
-		if (l == NULL) {
-			fprintf(stderr, "Failed to enable gadget, no UDC found\n");
-			return -1;
-		}
-
-out:
-		g_list_foreach(objects, (GFunc)g_object_unref, NULL);
-		g_list_free(objects);
-		g_object_unref(manager);
-
-		if (msg != NULL) {
-			fprintf(stderr, "Failed to enable gadget, %s\n", msg);
-			return -1;
-		}
-
-	} else if (backend_ctx.backend_type == GT_BACKEND_LIBUSBG) {
-		usbg_gadget *g;
-		usbg_udc *udc = NULL;
-		int usbg_ret;
-
-		if (dt->udc != NULL) {
-			udc = usbg_get_udc(backend_ctx.libusbg_state, dt->udc);
-			if (udc == NULL) {
-				fprintf(stderr, "Failed to get udc\n");
-				return -1;
-			}
-		}
-
-		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
-		if (g == NULL) {
-			fprintf(stderr, "Failed to get gadget\n");
-			return -1;
-		}
-
-		usbg_ret = usbg_enable_gadget(g, udc);
-		if (usbg_ret != USBG_SUCCESS) {
-			fprintf(stderr, "Failed to enable gadget %s\n", usbg_strerror(usbg_ret));
-			return -1;
-		}
-	}
-
-	return 0;
 }
 
 static int gt_gadget_enable_help(void *data)
@@ -655,31 +342,12 @@ static void gt_parse_gadget_enable(const Command *cmd, int argc,
 		goto out;
 	}
 
-	executable_command_set(exec, gt_gadget_enable_func,
+	executable_command_set(exec, GET_EXECUTABLE(enable),
 				(void *)dt, free);
 	return;
 out:
 	free((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_gadget_disable_data {
-	const char *gadget;
-	const char *udc;
-};
-
-static int gt_gadget_disable_func(void *data)
-{
-	struct gt_gadget_disable_data *dt;
-
-	dt = (struct gt_gadget_disable_data *)data;
-	printf("Gadget disable called successfully. Not implemented.\n");
-	if (dt->gadget)
-		printf("gadget = %s, ", dt->gadget);
-	if (dt->udc)
-		printf("udc = %s", dt->udc);
-	putchar('\n');
-	return 0;
 }
 
 static int gt_gadget_disable_help(void *data)
@@ -723,29 +391,11 @@ static void gt_parse_gadget_disable(const Command *cmd, int argc,
 	}
 
 	dt->gadget = argv[optind];
-	executable_command_set(exec, gt_gadget_disable_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(disable), (void *)dt, free);
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_gadget_gadget_data {
-	const char *name;
-	int opts;
-};
-
-static int gt_gadget_gadget_func(void *data)
-{
-	struct gt_gadget_gadget_data *dt;
-
-	dt = (struct gt_gadget_gadget_data *)data;
-	printf("Gadget gadget called successfully. Not implemented.\n");
-	if (dt->name)
-		printf("name = %s, ", dt->name);
-	printf("recursive = %d, verbose = %d\n",
-		!!(dt->opts & GT_RECURSIVE), !!(dt->opts & GT_VERBOSE));
-	return 0;
 }
 
 static int gt_gadget_gadget_help(void *data)
@@ -779,41 +429,12 @@ static void gt_parse_gadget_gadget(const Command *cmd, int argc,
 		goto out;
 	}
 
-	executable_command_set(exec, gt_gadget_gadget_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(gadget), (void *)dt,
 		free);
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_gadget_load_data {
-	const char *name;
-	const char *gadget_name;
-	const char *file;
-	const char *path;
-	int opts;
-};
-
-static int gt_gadget_load_func(void *data)
-{
-	struct gt_gadget_load_data *dt;
-
-	dt = (struct gt_gadget_load_data *)data;
-	printf("Gadget load called successfully. Not implemented.\n");
-	if (dt->name)
-		printf("name = %s, ", dt->name);
-	if (dt->gadget_name)
-		printf("gadget = %s, ", dt->gadget_name);
-	if (dt->file)
-		printf("file %s, ", dt->file);
-	if (dt->path)
-		printf("path = %s, ", dt->path);
-
-	printf("off = %d, stdin = %d\n",
-		!!(dt->opts & GT_OFF), !!(dt->opts & GT_STDIN));
-
-	return 0;
 }
 
 static int gt_gadget_load_help(void *data)
@@ -883,21 +504,12 @@ static void gt_parse_gadget_load(const Command *cmd, int argc,
 	if (optind < argc)
 		dt->gadget_name = argv[optind++];
 
-	executable_command_set(exec, gt_gadget_load_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(load), (void *)dt, free);
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_gadget_save_data {
-	const char *gadget;
-	const char *name;
-	const char *file;
-	const char *path;
-	struct gt_setting *attrs;
-	int opts;
-};
 
 static void gt_gadget_save_destructor(void *data)
 {
@@ -908,34 +520,6 @@ static void gt_gadget_save_destructor(void *data)
 	dt = (struct gt_gadget_save_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_gadget_save_func(void *data)
-{
-	struct gt_gadget_save_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_gadget_save_data *)data;
-	printf("Gadget save called successfully. Not implemented\n");
-	if (dt->gadget)
-		printf("gadget = %s, ", dt->gadget);
-	if (dt->name)
-		printf("name = %s, ", dt->name);
-	if (dt->file)
-		printf("file = %s, ", dt->file);
-	if (dt->path)
-		printf("path = %s, ", dt->path);
-	printf("force = %d, stdout = %d",
-		!!(dt->opts & GT_FORCE), !!(dt->opts & GT_STDOUT));
-
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_gadget_save_help(void *data)
@@ -1007,31 +591,13 @@ static void gt_parse_gadget_save(const Command *cmd, int argc,
 	if (c < 0)
 		goto out;
 
-	executable_command_set(exec, gt_gadget_save_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(save), (void *)dt,
 		gt_gadget_save_destructor);
 
 	return;
 out:
 	gt_gadget_save_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_gadget_template_data {
-	const char *name;
-	int opts;
-};
-
-static int gt_gadget_template_func(void *data)
-{
-	struct gt_gadget_template_data *dt;
-
-	dt = (struct gt_gadget_template_data *)data;
-	printf("Gadget template called successfully. Not implemented.\n");
-	if (dt->name)
-		printf("name = %s, ", dt->name);
-       	printf("verbose = %d, recursive = %d\n",
-		!!(dt->opts & GT_VERBOSE), !!(dt->opts & GT_RECURSIVE));
-	return 0;
 }
 
 static int gt_gadget_template_help(void *data)
@@ -1060,23 +626,13 @@ static void gt_parse_gadget_template(const Command *cmd, int argc,
 	if (argv[ind])
 		dt->name = argv[ind];
 
-	executable_command_set(exec, gt_gadget_template_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_default), (void *)dt,
 		free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-static int gt_gadget_template_rm_func(void *data)
-{
-	char *dt;
-
-	dt = (char *)data;
-	printf("Gadget template rm called successfully. Not implemented.\n");
-	printf("name = %s\n", dt);
-	return 0;
 }
 
 static int gt_gadget_template_rm_help(void *data)
@@ -1094,18 +650,13 @@ static void gt_parse_gadget_template_rm(const Command *cmd, int argc,
 		goto out;
 
 	dt = argv[0];
-	executable_command_set(exec, gt_gadget_template_rm_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_rm), (void *)dt,
 		NULL);
 
 	return;
 out:
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_gadget_template_set_data {
-	const char *name;
-	struct gt_setting *attr;
-};
 
 static void gt_gadget_template_set_destructor(void *data)
 {
@@ -1116,24 +667,6 @@ static void gt_gadget_template_set_destructor(void *data)
 	dt = (struct gt_gadget_template_set_data *)data;
 	gt_setting_list_cleanup(dt->attr);
 	free(dt);
-}
-
-static int gt_gadget_template_set_func(void *data)
-{
-	struct gt_gadget_template_set_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_gadget_template_set_data *)data;
-	printf("Gadget template set called successfully. Not implemened.\n");
-	printf("name = %s", dt->name);
-	ptr = dt->attr;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_gadget_template_set_help(void *data)
@@ -1160,7 +693,7 @@ static void gt_parse_gadget_template_set(const Command *cmd, int argc,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_gadget_template_set_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(set), (void *)dt,
 		gt_gadget_template_set_destructor);
 
 	return;
@@ -1168,11 +701,6 @@ out:
 	gt_gadget_template_set_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_gadget_template_get_data {
-	const char *name;
-	const char **attr;
-};
 
 static void gt_gadget_template_get_destructor(void *data)
 {
@@ -1183,24 +711,6 @@ static void gt_gadget_template_get_destructor(void *data)
 	dt = (struct gt_gadget_template_get_data *)data;
 	free(dt->attr);
 	free(dt);
-}
-
-static int gt_gadget_template_get_func(void *data)
-{
-	struct gt_gadget_template_get_data *dt;
-	const char **ptr;
-
-	dt = (struct gt_gadget_template_get_data *)data;
-	printf("Gadget template get called successfully. Not implemented.\n");
-	printf("name = %s, attr = ", dt->name);
-	ptr = dt->attr;
-	while (*ptr) {
-		printf("%s, ", *ptr);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_gadget_template_get_help(void *data)
@@ -1232,7 +742,7 @@ static void gt_parse_gadget_template_get(const Command *cmd, int argc,
 	for (i = 0; i < argc; i++)
 		dt->attr[i] = argv[i];
 
-	executable_command_set(exec, gt_gadget_template_get_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 		gt_gadget_template_get_destructor);
 
 	return;

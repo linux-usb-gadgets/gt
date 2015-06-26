@@ -22,6 +22,7 @@
 
 #include "backend.h"
 #include "function.h"
+#include "gadget.h"
 
 struct gt_backend_ctx backend_ctx = {
 	.backend_type = GT_BACKEND_AUTO,
@@ -29,10 +30,12 @@ struct gt_backend_ctx backend_ctx = {
 
 struct gt_backend gt_backend_libusbg = {
 	.function = &gt_function_backend_libusbg,
+	.gadget = &gt_gadget_backend_libusbg,
 };
 
 struct gt_backend gt_backend_gadgetd = {
 	.function = &gt_function_backend_gadgetd,
+	.gadget = &gt_gadget_backend_gadgetd,
 };
 
 int gt_backend_init(const char *program_name, enum gt_option_flags flags)

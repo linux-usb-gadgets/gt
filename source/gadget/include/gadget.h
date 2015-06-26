@@ -17,7 +17,147 @@
 #ifndef __GADGET_TOOL_GADGET_GADGET_H__
 #define __GADGET_TOOL_GADGET_GADGET_H__
 
+#include <usbg/usbg.h>
+
 #include "command.h"
+
+/**
+ * An interface that backends need to implement. Not implemented functions
+ * should be filled with NULL pointers. For each function the only argument
+ * passed is a pointer to corresponding structure.
+ */
+struct gt_gadget_backend {
+	/**
+	 * Create a gadget
+	 */
+	int (*create)(void *);
+	/**
+	 * Remove a gadget
+	 */
+	int (*rm)(void *);
+	/**
+	 * Get gadget attributes
+	 */
+	int (*get)(void *);
+	/**
+	 * Set gadget attributes
+	 */
+	int (*set)(void *);
+	/**
+	 * Enable a gadget
+	 */
+	int (*enable)(void *);
+	/**
+	 * Disable a gadget
+	 */
+	int (*disable)(void *);
+	/**
+	 * Show gadgets
+	 */
+	int (*gadget)(void *);
+	/**
+	 * Load gadget from file
+	 */
+	int (*load)(void *);
+	/**
+	 * Save gadget to file
+	 */
+	int (*save)(void *);
+	/**
+	 * Show gadget templates
+	 */
+	int (*template_default)(void *);
+	/**
+	 * Get template attributes
+	 */
+	int (*template_get)(void *);
+	/**
+	 * Set template attributes
+	 */
+	int (*template_set)(void *);
+	/**
+	 * Remove template
+	 */
+	int (*template_rm)(void *);
+};
+
+#define GT_GADGET_STRS_COUNT 3
+
+struct gt_gadget_str {
+	char *name;
+	int (*set_fn)(usbg_gadget *, int, const char *);
+};
+
+extern const struct gt_gadget_str gadget_strs[];
+
+struct gt_gadget_create_data {
+	const char *name;
+	int attr_val[USBG_GADGET_ATTR_MAX];
+	char *str_val[GT_GADGET_STRS_COUNT];
+	int opts;
+};
+
+struct gt_gadget_rm_data {
+	const char *name;
+	int opts;
+};
+
+struct gt_gadget_get_data {
+	const char *name;
+	const char **attrs;
+};
+
+struct gt_gadget_set_data {
+	const char *name;
+	struct gt_setting *attrs;
+};
+
+struct gt_gadget_enable_data {
+	const char *gadget;
+	const char *udc;
+};
+
+struct gt_gadget_disable_data {
+	const char *gadget;
+	const char *udc;
+};
+
+struct gt_gadget_gadget_data {
+	const char *name;
+	int opts;
+};
+
+struct gt_gadget_load_data {
+	const char *name;
+	const char *gadget_name;
+	const char *file;
+	const char *path;
+	int opts;
+};
+
+struct gt_gadget_save_data {
+	const char *gadget;
+	const char *name;
+	const char *file;
+	const char *path;
+	struct gt_setting *attrs;
+	int opts;
+};
+
+struct gt_gadget_template_data {
+	const char *name;
+	int opts;
+};
+
+struct gt_gadget_template_set_data {
+	const char *name;
+	struct gt_setting *attr;
+};
+
+struct gt_gadget_template_get_data {
+	const char *name;
+	const char **attr;
+};
 
 /**
  * @brief Gets the commands possible for gadget
@@ -36,5 +176,9 @@ const Command *get_gadget_children(const Command *cmd);
  * @return -1 because invalid syntax has been provided
  */
 int gt_gadget_help(void *data);
+
+extern struct gt_gadget_backend gt_gadget_backend_gadgetd;
+extern struct gt_gadget_backend gt_gadget_backend_libusbg;
+extern struct gt_gadget_backend gt_gadget_backend_not_implemented;
 
 #endif //__GADGET_TOOL_GADGET_GADGET_H__
