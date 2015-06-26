@@ -75,6 +75,53 @@ err_usbg:
 	return -1;
 }
 
+static int rm_func(void *data)
+{
+	struct gt_gadget_rm_data *dt;
+	int usbg_ret;
+	usbg_udc *u;
+	usbg_gadget *g;
+	int opts = 0;
+
+	dt = (struct gt_gadget_rm_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->name);
+	if (g == NULL) {
+		fprintf(stderr, "Gadget '%s' not found\n", dt->name);
+		goto err;
+	}
+
+	u = usbg_get_gadget_udc(g);
+
+	if (u) {
+		if (!(dt->opts & GT_FORCE)) {
+			fprintf(stderr, "Gadget is enabled, disable it first or use --force option\n");
+			goto err;
+		}
+
+		usbg_ret = usbg_disable_gadget(g);
+		if (usbg_ret != USBG_SUCCESS) {
+			fprintf(stderr, "Error on disable gadget: %s : %s\n",
+				usbg_error_name(usbg_ret), usbg_strerror(usbg_ret));
+			goto err;
+		}
+	}
+
+	if (dt->opts & GT_RECURSIVE)
+		opts |= USBG_RM_RECURSE;
+
+	usbg_ret = usbg_rm_gadget(g, opts);
+	if (usbg_ret != USBG_SUCCESS){
+		fprintf(stderr, "Error on gadget remove: %s : %s\n",
+			usbg_error_name(usbg_ret), usbg_strerror(usbg_ret));
+		goto err;
+	}
+
+	return 0;
+err:
+	return -1;
+}
+
 static int enable_func(void *data)
 {
 	struct gt_gadget_enable_data *dt;
@@ -110,7 +157,7 @@ static int enable_func(void *data)
 
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
-	.rm = NULL,
+	.rm = rm_func,
 	.get = NULL,
 	.set = NULL,
 	.enable = enable_func,

@@ -192,7 +192,13 @@ out:
 
 static int gt_gadget_rm_help(void *data)
 {
-	printf("Gadget rm help.\n");
+	printf("usage: %s rm [OPTIONS] NAME \n"
+	       "Remove gadget of specified name\n"
+	       "\n"
+	       "Options:\n"
+	       "  -f, --force\tDisable gadget if it was enabled\n"
+	       "  -r, --recursive\tRemove configs and functions recursively\n",
+	       program_name);
 	return -1;
 }
 
