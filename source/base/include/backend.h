@@ -45,6 +45,7 @@ enum gt_backend_type {
 struct gt_backend {
 	struct gt_function_backend *function;
 	struct gt_gadget_backend *gadget;
+	struct gt_config_backend *config;
 };
 
 struct gt_backend_ctx {

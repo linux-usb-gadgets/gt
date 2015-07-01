@@ -23,24 +23,21 @@
 #include "configuration.h"
 #include "common.h"
 #include "parser.h"
+#include "backend.h"
 
 #include <errno.h>
-#include <backend.h>
 #include <gio/gio.h>
+
+#define GET_EXECUTABLE(func) \
+	(backend_ctx.backend->config->func ? \
+	 backend_ctx.backend->config->func : \
+	 gt_config_backend_not_implemented.func)
 
 int gt_config_help(void *data)
 {
 	printf("Configuration help function\n");
 	return -1;
 }
-
-struct gt_config_create_data {
-	const char *gadget;
-	int config_id;
-	const char *config_label;
-	int opts;
-	struct gt_setting *attrs;
-};
 
 static void gt_config_create_destructor(void *data)
 {
@@ -51,82 +48,6 @@ static void gt_config_create_destructor(void *data)
 	dt = (struct gt_config_create_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_config_create_func(void *data)
-{
-	struct gt_config_create_data *dt;
-
-	dt = (struct gt_config_create_data *)data;
-
-	/* TODO implement -f option */
-	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
-		GVariant *gret;
-		GError *error = NULL;
-		_cleanup_g_free_ gchar *path = NULL;
-		_cleanup_g_free_ gchar *out_config_path = NULL;
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   "/org/usb/Gadget",
-						   "org.usb.device.GadgetManager",
-						   "FindGadgetByName",
-						   g_variant_new ("(s)",
-						                  dt->gadget),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-
-		if (error) {
-			fprintf(stderr, "Failed to get gadget path, %s\n", error->message);
-			return -1;
-		}
-
-		g_variant_get(gret, "(o)", &path);
-		g_variant_unref(gret);
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   path,
-						   "org.usb.device.Gadget.ConfigManager",
-						   "CreateConfig",
-						   g_variant_new ("(is)",
-								  dt->config_id,
-								  dt->config_label),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-		if (error) {
-			fprintf(stderr, "Unknown error, %s\n", error->message);
-			return -1;
-		}
-		g_variant_get(gret, "(o)", &out_config_path);
-		g_variant_unref(gret);
-	} else {
-		int usbg_ret;
-		usbg_gadget *g;
-		usbg_config *c;
-
-		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
-		if (g == NULL) {
-			fprintf(stderr, "Cant get gadget by name\n");
-			return -1;
-		}
-
-		usbg_ret = usbg_create_config(g, dt->config_id, dt->config_label, NULL, NULL, &c);
-		if (usbg_ret != USBG_SUCCESS) {
-			fprintf(stderr,"Error on config create\n");
-			fprintf(stderr,"Error: %s: %s\n", usbg_error_name(usbg_ret),
-				usbg_strerror(usbg_ret));
-			return -1;
-		}
-	}
-
-	return 0;
 }
 
 static int gt_config_create_help(void *data)
@@ -170,32 +91,13 @@ static void gt_parse_config_create(const Command *cmd, int argc, char **argv,
 	if (c < 0)
 		goto out;
 
-	executable_command_set(exec, gt_config_create_func,
+	executable_command_set(exec, GET_EXECUTABLE(create),
 			       (void *)dt, gt_config_create_destructor);
 	return;
 
 out:
 	gt_config_create_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_config_rm_data {
-	const char *gadget;
-	const char *config;
-	int opts;
-};
-
-static int gt_config_rm_func(void *data)
-{
-	struct gt_config_rm_data *dt;
-
-	dt = (struct gt_config_rm_data *)data;
-	printf("Config rm called successfully. Not implemented.\n");
-	printf("gadget = %s, config = %s, force = %d, recursive = %d\n",
-		dt->gadget, dt->config, !!(dt->opts & GT_FORCE),
-		!!(dt->opts & GT_RECURSIVE));
-
-	return 0;
 }
 
 static int gt_config_rm_help(void *data)
@@ -223,19 +125,13 @@ static void gt_parse_config_rm(const Command *cmd, int argc, char **argv,
 
 	dt->gadget = argv[ind++];
 	dt->config = argv[ind++];
-	executable_command_set(exec, gt_config_rm_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(rm), (void *)dt, free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_config_get_data {
-	const char *gadget;
-	const char *config;
-	const char **attrs;
-};
 
 static void gt_config_get_destructor(void *data)
 {
@@ -246,24 +142,6 @@ static void gt_config_get_destructor(void *data)
 	dt = (struct gt_config_get_data *)data;
 	free(dt->attrs);
 	free(dt);
-}
-
-static int gt_config_get_func(void *data)
-{
-	struct gt_config_get_data *dt;
-	const char **ptr;
-
-	dt = (struct gt_config_get_data *)data;
-	printf("Config get called successfully. Not implemented.\n");
-	printf("gadget = %s, config = %s, attrs = ",
-		dt->gadget, dt->config);
-	ptr = dt->attrs;
-	while (*ptr) {
-		printf("%s, ", *ptr);
-		ptr++;
-	}
-	putchar('\n');
-	return 0;
 }
 
 static int gt_config_get_help(void *data)
@@ -296,19 +174,13 @@ static void gt_parse_config_get(const Command *cmd, int argc, char **argv,
 	for (i = 0; argv[i]; i++)
 		dt->attrs[i] = argv[i];
 
-	executable_command_set(exec, gt_config_get_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 			gt_config_get_destructor);
 	return;
 out:
 	gt_config_get_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_config_set_data {
-	const char *gadget;
-	const char *config;
-	struct gt_setting *attrs;
-};
 
 static void gt_config_set_destructor(void *data)
 {
@@ -319,24 +191,6 @@ static void gt_config_set_destructor(void *data)
 	dt = (struct gt_config_set_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_config_set_func(void *data)
-{
-	struct gt_config_set_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_config_set_data *)data;
-	printf("Config set called successfully. Not implemented.\n");
-	printf("gadget = %s, config = %s", dt->gadget, dt->config);
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_config_set_help(void *data)
@@ -363,33 +217,12 @@ static void gt_parse_config_set(const Command *cmd, int argc, char **argv,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_config_set_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(set), (void *)dt,
 			gt_config_set_destructor);
 	return;
 out:
 	gt_config_set_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_config_config_data {
-	const char *gadget;
-	const char *config;
-	int opts;
-};
-
-static int gt_config_config_func(void *data)
-{
-	struct gt_config_config_data *dt;
-
-	dt = (struct gt_config_config_data *)data;
-	printf("Config config called successfully. Not implemented.\n");
-	printf("gadget = %s", dt->gadget);
-	if (dt->config)
-		printf(", config = %s", dt->config);
-	printf(", verbose = %d, recursive = %d\n",
-		!!(dt->opts & GT_VERBOSE), !!(dt->opts & GT_RECURSIVE));
-
-	return 0;
 }
 
 static int gt_config_config_help(void *data)
@@ -420,173 +253,12 @@ static void gt_parse_config_config(const Command *cmd, int argc, char **argv,
 	if (ind < argc)
 		dt->config = argv[ind++];
 
-	executable_command_set(exec, gt_config_config_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(config), (void *)dt, free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_config_add_del_data {
-	const char *gadget;
-	int   config_id;
-	const char *config_label;
-	const char *type;
-	const char *instance;
-};
-
-static int gt_config_add_func(void *data)
-{
-	struct gt_config_add_del_data *dt;
-
-	dt = (struct gt_config_add_del_data *)data;
-
-	if (backend_ctx.backend_type == GT_BACKEND_GADGETD) {
-		_cleanup_g_free_ gchar *gpath = NULL;
-		_cleanup_g_free_ gchar *fpath = NULL;
-		_cleanup_g_free_ gchar *cpath = NULL;
-		GVariant *gret;
-		GError *error = NULL;
-		gboolean function_added;
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   "/org/usb/Gadget",
-						   "org.usb.device.GadgetManager",
-						   "FindGadgetByName",
-						   g_variant_new ("(s)",
-						                  dt->gadget),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-
-		if (error) {
-			fprintf(stderr, "Failed to find gadget, %s\n", error->message);
-			return -1;
-		}
-
-		g_variant_get(gret, "(o)", &gpath);
-		g_variant_unref(gret);
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   gpath,
-						   "org.usb.device.Gadget.FunctionManager",
-						   "FindFunctionByName",
-						   g_variant_new ("(ss)",
-								  dt->type,
-								  dt->instance),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-
-		if (error) {
-			fprintf(stderr, "Failed to find function, %s\n", error->message);
-			return -1;
-		}
-
-		g_variant_get(gret, "(o)", &fpath);
-		g_variant_unref(gret);
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   gpath,
-						   "org.usb.device.Gadget.ConfigManager",
-						   "FindConfigByName",
-						   g_variant_new ("(is)",
-								  dt->config_id,
-								  dt->config_label),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-
-		if (error) {
-			fprintf(stderr, "Failed to find config, %s\n", error->message);
-			return -1;
-		}
-
-		g_variant_get(gret, "(o)", &cpath);
-		g_variant_unref(gret);
-
-		gret = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
-						   "org.usb.gadgetd",
-						   cpath,
-						   "org.usb.device.Gadget.Config",
-						   "AttachFunction",
-						   g_variant_new ("(o)", fpath),
-						   NULL,
-						   G_DBUS_CALL_FLAGS_NONE,
-						   -1,
-						   NULL,
-						   &error);
-
-		if (error) {
-			fprintf(stderr,"Failed to attach function, %s\n", error->message);
-			return -1;
-		}
-
-		g_variant_get(gret, "(b)", &function_added);
-		g_variant_unref(gret);
-
-	} else if (backend_ctx.backend_type == GT_BACKEND_LIBUSBG) {
-		int usbg_ret = USBG_SUCCESS;
-		usbg_function_type f_type;
-		usbg_gadget *g;
-		usbg_function *f;
-		usbg_config *c;
-		int n;
-		char buff[255];
-		_cleanup_g_free_ gchar *func_name = NULL;
-		const char *cfg_label = NULL;
-
-		cfg_label = dt->config_label;
-
-		/* func_name cant be NULL (libusbg requirement) */
-		n = snprintf(buff, 255, "%s.%s", dt->type, dt->instance);
-		if (n < 0)
-			return -1;
-		func_name = strdup(buff);
-
-		f_type = usbg_lookup_function_type(dt->type);
-
-		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
-		if (g == NULL) {
-			fprintf(stderr, "Unable to get gadget\n");
-			return -1;
-		}
-
-		f = usbg_get_function(g, f_type, dt->instance);
-		if (f == NULL) {
-			fprintf(stderr, "Unable to get function\n");
-			return -1;
-		}
-
-		if (strcmp(dt->config_label, "") == 0)
-			cfg_label = NULL;
-
-		c = usbg_get_config(g, dt->config_id, cfg_label);
-		if (c == NULL) {
-			fprintf(stderr, "Unable to get config\n");
-			return -1;
-		}
-
-		usbg_ret = usbg_add_config_function(c, func_name, f);
-		if (usbg_ret != USBG_SUCCESS) {
-			fprintf(stderr, "Unable to attach function\n");
-			fprintf(stderr,"Error: %s: %s\n", usbg_error_name(usbg_ret),
-				usbg_strerror(usbg_ret));
-			return -1;
-		}
-	}
-
-	return 0;
 }
 
 static int gt_config_add_help(void *data)
@@ -636,24 +308,12 @@ static void gt_parse_config_add(const Command *cmd, int argc, char **argv,
 
 	dt->gadget = argv[0];
 
-	executable_command_set(exec, gt_config_add_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(add), (void *)dt, free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-static int gt_config_del_func(void *data)
-{
-	struct gt_config_add_del_data *dt;
-
-	dt = (struct gt_config_add_del_data *)data;
-	printf("Config del called successfully. Not implemented.\n");
-	printf("gadget = %s, cfg_label = %s, cfg_id = %d, type = %s, instance = %s\n",
-			dt->gadget, dt->config_label, dt->config_id, dt->type, dt->instance);
-
-	return 0;
 }
 
 static int gt_config_del_help(void *data)
@@ -699,30 +359,12 @@ static void gt_parse_config_del(const Command *cmd, int argc, char **argv,
 
 	dt->gadget = argv[0];
 
-	executable_command_set(exec, gt_config_del_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(del), (void *)dt, free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-struct gt_config_template_data {
-	const char *name;
-	int opts;
-};
-
-static int gt_config_template_func(void *data)
-{
-	struct gt_config_template_data *dt;
-
-	dt = (struct gt_config_template_data *)data;
-	printf("Config template called successfully. Not implemented.\n");
-	if (dt->name)
-		printf("name = %s, ", dt->name);
-	printf("verbose = %d, recursive = %d\n",
-		!!(dt->opts & GT_VERBOSE), !!(dt->opts & GT_RECURSIVE));
-	return 0;
 }
 
 static int gt_config_template_help(void *data)
@@ -751,18 +393,13 @@ static void gt_parse_config_template(const Command *cmd, int argc, char **argv,
 
 	dt->name = argv[ind];
 
-	executable_command_set(exec, gt_config_template_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(template_default), (void *)dt, free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_config_template_get_data {
-	const char *name;
-	const char **attr;
-};
 
 static void gt_config_template_get_destructor(void *data)
 {
@@ -773,24 +410,6 @@ static void gt_config_template_get_destructor(void *data)
 	dt = (struct gt_config_template_get_data *)data;
 	free(dt->attr);
 	free(dt);
-}
-
-static int gt_config_template_get_func(void *data)
-{
-	struct gt_config_template_get_data *dt;
-	const char **ptr;
-
-	dt = (struct gt_config_template_get_data *)data;
-	printf("Config template get called successfully. Not implemented.\n");
-	printf("name = %s, attr = ", dt->name);
-	ptr = dt->attr;
-	while (*ptr) {
-		printf("%s, ", *ptr);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_config_template_get_help(void *data)
@@ -821,7 +440,7 @@ static void gt_parse_config_template_get(const Command *cmd, int argc,
 	for (i = 0; argv[i]; i++)
 		dt->attr[i] = argv[i];
 
-	executable_command_set(exec, gt_config_template_get_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_get), (void *)dt,
 		gt_config_template_get_destructor);
 
 	return;
@@ -829,11 +448,6 @@ out:
 	gt_config_template_get_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_config_template_set_data {
-	const char *name;
-	struct gt_setting *attr;
-};
 
 static void gt_config_template_set_destructor(void *data)
 {
@@ -844,24 +458,6 @@ static void gt_config_template_set_destructor(void *data)
 	dt = (struct gt_config_template_set_data *)data;
 	gt_setting_list_cleanup(dt->attr);
 	free(dt);
-}
-
-static int gt_config_template_set_func(void *data)
-{
-	struct gt_config_template_set_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_config_template_set_data *)data;
-	printf("Config template set called successfully. Not implemened.\n");
-	printf("name = %s", dt->name);
-	ptr = dt->attr;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
-	}
-
-	putchar('\n');
-	return 0;
 }
 
 static int gt_config_template_set_help(void *data)
@@ -888,23 +484,13 @@ static void gt_parse_config_template_set(const Command *cmd, int argc,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, gt_config_template_set_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_set), (void *)dt,
 		gt_config_template_set_destructor);
 
 	return;
 out:
 	gt_config_template_set_destructor((void *)dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
-}
-
-static int gt_config_template_rm_func(void *data)
-{
-	const char *dt;
-
-	dt = (const char *)data;
-	printf("Config template rm called successfully. Not implemented.\n");
-	printf("name = %s\n", dt);
-	return 0;
 }
 
 static int gt_config_template_rm_help(void *data)
@@ -922,7 +508,7 @@ static void gt_parse_config_template_rm(const Command *cmd, int argc,
 		goto out;
 
 	dt = argv[0];
-	executable_command_set(exec, gt_config_template_rm_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_rm), (void *)dt,
 			NULL);
 
 	return;
@@ -945,38 +531,6 @@ static const Command *gt_config_template_get_children(const Command *cmd)
 	};
 
 	return commands;
-}
-
-struct gt_config_load_data {
-	const char *name;
-	const char *gadget;
-	const char *config;
-	const char *file;
-	const char *path;
-	int opts;
-};
-
-static int gt_config_load_func(void *data)
-{
-	struct gt_config_load_data *dt;
-
-	dt = (struct gt_config_load_data *)data;
-	printf("Config load called successfully. Not implemented.\n");
-	if (dt->name)
-		printf("name = %s, ", dt->name);
-	if (dt->gadget)
-		printf("gadget = %s, ", dt->gadget);
-	if (dt->config)
-		printf("config = %s, ", dt->config);
-	if (dt->file)
-		printf("file = %s, ", dt->file);
-	if (dt->path)
-		printf("path = %s, ", dt->path);
-	printf("recursive = %d, force = %d, stdin = %d\n",
-		!!(dt->opts & GT_RECURSIVE), !!(dt->opts & GT_FORCE),
-		!!(dt->opts & GT_STDIN));
-
-	return 0;
 }
 
 static int gt_config_load_help(void *data)
@@ -1052,23 +606,13 @@ static void gt_parse_config_load(const Command *cmd, int argc,
 	if (optind < argc)
 		dt->config = argv[optind++];
 
-	executable_command_set(exec, gt_config_load_func, (void *)dt, free);
+	executable_command_set(exec, GET_EXECUTABLE(load), (void *)dt, free);
 
 	return;
 out:
 	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
-
-struct gt_config_save_data {
-	const char *gadget;
-	const char *config;
-	const char *name;
-	const char *file;
-	const char *path;
-	int opts;
-	struct gt_setting *attrs;
-};
 
 static void gt_config_save_destructor(void *data)
 {
@@ -1079,38 +623,6 @@ static void gt_config_save_destructor(void *data)
 	dt = (struct gt_config_save_data *)data;
 	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
-}
-
-static int gt_config_save_func(void *data)
-{
-	struct gt_config_save_data *dt;
-	struct gt_setting *ptr;
-
-	dt = (struct gt_config_save_data *)data;
-	printf("Config save called successfully. Not implemented.\n");
-	if (dt->gadget)
-		printf("gadget=%s, ", dt->gadget);
-	if (dt->config)
-		printf("config=%s, ", dt->config);
-	if (dt->name)
-		printf("name=%s, ", dt->name);
-	if (dt->file)
-		printf("file=%s, ", dt->file);
-	if (dt->path)
-		printf("path=%s, ", dt->path);
-	printf("force=%d, stdout=%d",
-		!!(dt->opts & GT_FORCE), !!(dt->opts & GT_STDOUT));
-
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
-	}
-
-	putchar('\n');
-
-
-	return 0;
 }
 
 static int gt_config_save_help(void *data)
@@ -1183,7 +695,7 @@ static void gt_parse_config_save(const Command *cmd, int argc,
 	if (c < 0)
 		goto out;
 
-	executable_command_set(exec, gt_config_save_func, (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(save), (void *)dt,
 			gt_config_save_destructor);
 
 	return;

@@ -20,6 +20,140 @@
 #include "command.h"
 
 /**
+ * An interface that backends need to implement. Not implemented functions
+ * should be filled with NULL pointers. For each function the only argument
+ * passed is a pointer to corresponding structure.
+ */
+struct gt_config_backend {
+	/**
+	 * Create a configuration
+	 */
+	int (*create)(void *);
+	/**
+	 * Remove a configuration
+	 */
+	int (*rm)(void *);
+	/**
+	 * Get configuration attributes
+	 */
+	int (*get)(void *);
+	/**
+	 * Set configuration attributes
+	 */
+	int (*set)(void *);
+	/**
+	 * Show configs
+	 */
+	int (*config)(void *);
+	/**
+	 * Add a function to configuration
+	 */
+	int (*add)(void *);
+	/**
+	 * Remove function from configuration
+	 */
+	int (*del)(void *);
+	/**
+	 * Show templates
+	 */
+	int (*template_default)(void *);
+	/**
+	 * Show templates attributes
+	 */
+	int (*template_get)(void *);
+	/**
+	 * Set templates attributes
+	 */
+	int (*template_set)(void *);
+	/**
+	 * Remove template
+	 */
+	int (*template_rm)(void *);
+	/**
+	 * Load config from file
+	 */
+	int (*load)(void *);
+	/**
+	 * Save config to file
+	 */
+	int (*save)(void *);
+};
+
+struct gt_config_create_data {
+	const char *gadget;
+	int config_id;
+	const char *config_label;
+	int opts;
+	struct gt_setting *attrs;
+};
+
+struct gt_config_rm_data {
+	const char *gadget;
+	const char *config;
+	int opts;
+};
+
+struct gt_config_get_data {
+	const char *gadget;
+	const char *config;
+	const char **attrs;
+};
+
+struct gt_config_set_data {
+	const char *gadget;
+	const char *config;
+	struct gt_setting *attrs;
+};
+
+struct gt_config_config_data {
+	const char *gadget;
+	const char *config;
+	int opts;
+};
+
+struct gt_config_add_del_data {
+	const char *gadget;
+	int   config_id;
+	const char *config_label;
+	const char *type;
+	const char *instance;
+};
+
+struct gt_config_template_data {
+	const char *name;
+	int opts;
+};
+
+struct gt_config_template_get_data {
+	const char *name;
+	const char **attr;
+};
+
+struct gt_config_template_set_data {
+	const char *name;
+	struct gt_setting *attr;
+};
+
+struct gt_config_load_data {
+	const char *name;
+	const char *gadget;
+	const char *config;
+	const char *file;
+	const char *path;
+	int opts;
+};
+
+struct gt_config_save_data {
+	const char *gadget;
+	const char *config;
+	const char *name;
+	const char *file;
+	const char *path;
+	int opts;
+	struct gt_setting *attrs;
+};
+
+/**
  * @brief Gets the next possible commands after config
  * @param[in] cmd actual command (should be config)
  * @return Pointer to table with all children of cmd
@@ -36,5 +170,9 @@ const Command *gt_config_get_children(const Command *cmd);
  * @return -1 because invalid syntax has been provided
  */
 int gt_config_help(void *data);
+
+extern struct gt_config_backend gt_config_backend_gadgetd;
+extern struct gt_config_backend gt_config_backend_libusbg;
+extern struct gt_config_backend gt_config_backend_not_implemented;
 
 #endif //__GADGET_TOOL_CONFIGURATION_CONFIGURATION_H__
