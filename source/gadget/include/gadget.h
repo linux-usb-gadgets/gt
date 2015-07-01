@@ -105,21 +105,25 @@ struct gt_gadget_rm_data {
 struct gt_gadget_get_data {
 	const char *name;
 	const char **attrs;
+	int opts;
 };
 
 struct gt_gadget_set_data {
 	const char *name;
 	struct gt_setting *attrs;
+	int opts;
 };
 
 struct gt_gadget_enable_data {
 	const char *gadget;
 	const char *udc;
+	int opts;
 };
 
 struct gt_gadget_disable_data {
 	const char *gadget;
 	const char *udc;
+	int opts;
 };
 
 struct gt_gadget_gadget_data {
@@ -149,14 +153,21 @@ struct gt_gadget_template_data {
 	int opts;
 };
 
+struct gt_gadget_template_rm_data {
+	const char *name;
+	int opts;
+};
+
 struct gt_gadget_template_set_data {
 	const char *name;
 	struct gt_setting *attr;
+	int opts;
 };
 
 struct gt_gadget_template_get_data {
 	const char *name;
 	const char **attr;
+	int opts;
 };
 
 /**

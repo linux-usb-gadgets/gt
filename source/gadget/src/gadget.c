@@ -114,7 +114,7 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 	struct gt_gadget_create_data *dt;
 	int ind;
 	int c;
-	int avaible_opts = GT_FORCE;
+	int avaible_opts = GT_FORCE | GT_HELP;
 	struct gt_setting *setting, *attrs = NULL;
 	_Bool iter;
 	int i;
@@ -124,7 +124,7 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 		goto out;
 
 	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
-	if (ind < 0)
+	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
 	if (ind == argc)
@@ -197,7 +197,8 @@ static int gt_gadget_rm_help(void *data)
 	       "\n"
 	       "Options:\n"
 	       "  -f, --force\tDisable gadget if it was enabled\n"
-	       "  -r, --recursive\tRemove configs and functions recursively\n",
+	       "  -r, --recursive\tRemove configs and functions recursively\n"
+	       "  -h, --help\tPrint this help\n",
 	       program_name);
 	return -1;
 }
@@ -207,14 +208,14 @@ static void gt_parse_gadget_rm(const Command *cmd, int argc, char **argv,
 {
 	struct gt_gadget_rm_data *dt;
 	int ind;
-	int avaible_opts = GT_FORCE | GT_RECURSIVE;
+	int avaible_opts = GT_FORCE | GT_RECURSIVE | GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
 	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
-	if (ind < 0)
+	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
 	if (argc - ind != 1)
@@ -251,6 +252,8 @@ static void gt_parse_gadget_get(const Command *cmd, int argc, char **argv,
 {
 	struct gt_gadget_get_data *dt = NULL;
 	int i;
+	int ind;
+	int avaible_opts = GT_HELP;
 
 	if (argc == 0)
 		goto out;
@@ -259,15 +262,18 @@ static void gt_parse_gadget_get(const Command *cmd, int argc, char **argv,
 	if (dt == NULL)
 		goto out;
 
-	dt->name = argv[0];
-	dt->attrs = calloc(argc, sizeof(char *));
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
+		goto out;
+
+	dt->name = argv[ind++];
+	dt->attrs = calloc(argc - ind + 1, sizeof(char *));
 	if (dt->attrs == NULL)
 		goto out;
 
-	argv++;
-	for (i = 0; i < argc; i++) {
-		dt->attrs[i] = argv[i];
-	}
+	i = 0;
+	while (argv[ind])
+		dt->attrs[i++] = argv[ind++];
 
 	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 			gt_gadget_get_destructor);
@@ -300,16 +306,22 @@ static void gt_parse_gadget_set(const Command *cmd, int argc, char **argv,
 {
 	struct gt_gadget_set_data *dt = NULL;
 	int tmp;
-
-	if (argc < 2)
-		goto out;
+	int ind;
+	int avaible_opts = GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
-	dt->name = argv[0];
-	tmp = gt_parse_setting_list(&dt->attrs, argc-1, argv+1);
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
+		goto out;
+
+	if (argc - ind < 2)
+		goto out;
+
+	dt->name = argv[ind++];
+	tmp = gt_parse_setting_list(&dt->attrs, argc - ind, argv + ind);
 	if (tmp < 0)
 		goto out;
 
@@ -331,18 +343,24 @@ static void gt_parse_gadget_enable(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
 	struct gt_gadget_enable_data *dt;
+	int ind;
+	int avaible_opts = GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
-	switch (argc) {
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
+		goto out;
+
+	switch (argc - ind) {
 	case 1:
-		dt->gadget = argv[0];
+		dt->gadget = argv[ind++];
 		break;
 	case 2:
-		dt->gadget = argv[0];
-		dt->udc = argv[1];
+		dt->gadget = argv[ind++];
+		dt->udc = argv[ind++];
 		break;
 	default:
 		goto out;
@@ -369,6 +387,7 @@ static void gt_parse_gadget_disable(const Command *cmd, int argc,
 	char c;
 	struct option opts[] = {
 		{"udc", required_argument, 0, 'u'},
+		{"help", no_argument, 0, 'h'},
 		{0, 0, 0, 0}
 	};
 
@@ -379,12 +398,15 @@ static void gt_parse_gadget_disable(const Command *cmd, int argc,
 	argc++;
 	while (1) {
 		int opt_index = 0;
-		c = getopt_long(argc, argv, "u:", opts, &opt_index);
+		c = getopt_long(argc, argv, "u:h", opts, &opt_index);
 		if (c == -1)
 			break;
 		switch (c) {
 		case 'u':
 			dt->udc = optarg;
+			break;
+		case 'h':
+			goto out;
 			break;
 		default:
 			goto out;
@@ -415,14 +437,14 @@ static void gt_parse_gadget_gadget(const Command *cmd, int argc,
 {
 	struct gt_gadget_gadget_data *dt;
 	int ind;
-	int avaible_opts = GT_RECURSIVE | GT_VERBOSE;
+	int avaible_opts = GT_RECURSIVE | GT_VERBOSE | GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
 	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
-	if (ind < 0)
+	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
 	switch (argc - ind) {
@@ -459,6 +481,7 @@ static void gt_parse_gadget_load(const Command *cmd, int argc,
 		{"file", required_argument, 0, 1},
 		{"stdin", no_argument, 0, 2},
 		{"path", required_argument, 0, 3},
+		{"help", no_argument, 0, 'h'},
 		{0, 0, 0, 0}
 	};
 
@@ -469,7 +492,7 @@ static void gt_parse_gadget_load(const Command *cmd, int argc,
 	argc++;
 	while (1) {
 		int opt_index = 0;
-		c = getopt_long(argc, argv, "o", opts, &opt_index);
+		c = getopt_long(argc, argv, "oh", opts, &opt_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -490,6 +513,9 @@ static void gt_parse_gadget_load(const Command *cmd, int argc,
 			if (dt->file || dt->opts & GT_STDIN)
 				goto out;
 			dt->path = optarg;
+			break;
+		case 'h':
+			goto out;
 			break;
 		default:
 			goto out;
@@ -544,6 +570,7 @@ static void gt_parse_gadget_save(const Command *cmd, int argc,
 		{"file", required_argument, 0, 1},
 		{"stdout", no_argument, 0, 2},
 		{"path", required_argument, 0, 3},
+		{"help", no_argument, 0, 'h'},
 		{0, 0, 0, 0}
 	};
 
@@ -554,7 +581,7 @@ static void gt_parse_gadget_save(const Command *cmd, int argc,
 	argc++;
 	while (1) {
 		int opt_index = 0;
-		c = getopt_long(argc, argv, "f", opts, &opt_index);
+		c = getopt_long(argc, argv, "fh", opts, &opt_index);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -575,6 +602,9 @@ static void gt_parse_gadget_save(const Command *cmd, int argc,
 			if (dt->file || dt->opts & GT_STDOUT)
 				goto out;
 			dt->path = optarg;
+			break;
+		case 'h':
+			goto out;
 			break;
 		default:
 			goto out;
@@ -617,13 +647,14 @@ static void gt_parse_gadget_template(const Command *cmd, int argc,
 {
 	int ind;
 	struct gt_gadget_template_data *dt;
-	int avaible_opts = GT_VERBOSE | GT_RECURSIVE;
+	int avaible_opts = GT_VERBOSE | GT_RECURSIVE | GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
+
 	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
-	if (ind < 0)
+	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
 	if (argc - ind > 1)
@@ -650,12 +681,22 @@ static int gt_gadget_template_rm_help(void *data)
 static void gt_parse_gadget_template_rm(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
-	const char *dt = NULL;
+	struct gt_gadget_template_rm_data *dt = NULL;
+	int ind;
+	int avaible_opts = GT_HELP;
 
-	if (argc != 1)
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
 		goto out;
 
-	dt = argv[0];
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
+		goto out;
+
+	if (argc - ind != 1)
+		goto out;
+
+	dt->name = argv[ind++];
 	executable_command_set(exec, GET_EXECUTABLE(template_rm), (void *)dt,
 		NULL);
 
@@ -686,16 +727,22 @@ static void gt_parse_gadget_template_set(const Command *cmd, int argc,
 {
 	int tmp;
 	struct gt_gadget_template_set_data *dt;
+	int ind;
+	int avaible_opts = GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
-	if (argc != 2)
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
-	dt->name = argv[0];
-	tmp = gt_parse_setting_list(&dt->attr, argc-1, argv+1);
+	if (argc - ind != 2)
+		goto out;
+
+	dt->name = argv[ind++];
+	tmp = gt_parse_setting_list(&dt->attr, argc - ind, argv + ind);
 	if (tmp < 0)
 		goto out;
 
@@ -730,23 +777,28 @@ static void gt_parse_gadget_template_get(const Command *cmd, int argc,
 {
 	int i;
 	struct gt_gadget_template_get_data *dt;
+	int ind;
+	int avaible_opts = GT_HELP;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
 		goto out;
 
-	if (argc < 1)
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
-	dt->name = argv[0];
+	if (argc - ind < 1)
+		goto out;
+
+	dt->name = argv[ind++];
 	dt->attr = calloc(argc, sizeof(char *));
 	if (dt->attr == NULL)
 		goto out;
 
-	argv++;
-	argc--;
-	for (i = 0; i < argc; i++)
-		dt->attr[i] = argv[i];
+	i = 0;
+	while (argv[ind])
+		dt->attr[i++] = argv[ind++];
 
 	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 		gt_gadget_template_get_destructor);
