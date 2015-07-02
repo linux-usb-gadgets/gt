@@ -97,12 +97,14 @@ struct gt_config_get_data {
 	const char *gadget;
 	const char *config;
 	const char **attrs;
+	int opts;
 };
 
 struct gt_config_set_data {
 	const char *gadget;
 	const char *config;
 	struct gt_setting *attrs;
+	int opts;
 };
 
 struct gt_config_config_data {
@@ -117,6 +119,7 @@ struct gt_config_add_del_data {
 	const char *config_label;
 	const char *type;
 	const char *instance;
+	int opts;
 };
 
 struct gt_config_template_data {
@@ -127,11 +130,18 @@ struct gt_config_template_data {
 struct gt_config_template_get_data {
 	const char *name;
 	const char **attr;
+	int opts;
 };
 
 struct gt_config_template_set_data {
 	const char *name;
 	struct gt_setting *attr;
+	int opts;
+};
+
+struct gt_config_template_rm_data {
+	const char *name;
+	int opts;
 };
 
 struct gt_config_load_data {
