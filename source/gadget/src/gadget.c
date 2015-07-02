@@ -91,7 +91,7 @@ static int gt_gadget_create_help(void *data)
 {
 	int i;
 
-	printf("usage: %s create NAME [attr=value]...\n"
+	printf("usage: %s create <name> [attr=value]...\n"
 	       "Create new gadget of specified name, attributes and language strings.\n"
 	       "\n"
 	       "Attributes:\n",
@@ -192,7 +192,7 @@ out:
 
 static int gt_gadget_rm_help(void *data)
 {
-	printf("usage: %s rm [OPTIONS] NAME \n"
+	printf("usage: %s rm [options] <name> \n"
 	       "Remove gadget of specified name\n"
 	       "\n"
 	       "Options:\n"

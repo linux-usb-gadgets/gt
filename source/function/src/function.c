@@ -44,7 +44,7 @@ static void gt_func_create_destructor(void *data)
 
 static int gt_func_create_help(void *data)
 {
-	printf("usage: %s func create GADGET_NAME FUNCTION_TYPE FUNCTION_NAME\n"
+	printf("usage: %s func create <gadget_name> <function_type> <function_name>\n"
 	       "Create new function of specified type (refer to `gt func list-types')\n",
 		program_name);
 	return 0;
@@ -140,7 +140,7 @@ out:
 
 static int gt_func_list_types_help(void *data)
 {
-	printf("%s func list-types\n"
+	printf("usage: %s func list-types\n"
 	       "List available function types.\n",
 		program_name);
 	return 0;
@@ -284,7 +284,7 @@ static void gt_func_func_destructor(void *data)
 
 static int gt_func_func_help(void *data)
 {
-	printf("usage: %s func COMMAND\n"
+	printf("usage: %s func [command] ...\n"
 	       "Manipulate USB function - both in-kernel and functionfs-based\n\n",
 		program_name);
 

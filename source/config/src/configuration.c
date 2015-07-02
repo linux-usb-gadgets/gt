@@ -52,9 +52,12 @@ static void gt_config_create_destructor(void *data)
 
 static int gt_config_create_help(void *data)
 {
-	printf("usage: %s config create GADGET_NAME <cf_label>  <cfg_id> <-f>\n"
+	printf("usage: %s config create [options] <gadget_name> <cfg_label> <cfg_id>\n"
 	       "Add new config to gadget.\n"
-	       "\n",
+	       "\n"
+	       "Options:"
+	       "-f, --force\tOverride config if config with given name already exists"
+	       "-h, --help\tPrint this help",
 	       program_name);
 	return 0;
 }
@@ -276,7 +279,7 @@ out:
 
 static int gt_config_add_help(void *data)
 {
-	printf("usage: %s config add GADGET_NAME <cfg_id> <cf_label> <func_type> <func_instance>\n"
+	printf("usage: %s config add <gadget_name> <cfg_label> <cfg_id> <func_type> <func_instance>\n"
 	       "Add function to specific configuration.\n"
 	       "\n",
 	       program_name);
