@@ -384,7 +384,7 @@ static void gt_parse_gadget_disable(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
 	struct gt_gadget_disable_data *dt;
-	char c;
+	int c;
 	struct option opts[] = {
 		{"udc", required_argument, 0, 'u'},
 		{"help", no_argument, 0, 'h'},
@@ -474,7 +474,7 @@ static int gt_gadget_load_help(void *data)
 static void gt_parse_gadget_load(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
-	char c;
+	int c;
 	struct gt_gadget_load_data *dt;
 	struct option opts[] = {
 		{"off", no_argument, 0, 'o'},
