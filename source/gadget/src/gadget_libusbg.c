@@ -155,13 +155,57 @@ static int enable_func(void *data)
 	return 0;
 }
 
+static int disable_func(void *data)
+{
+	struct gt_gadget_disable_data *dt;
+
+	usbg_gadget *g;
+	usbg_udc *u;
+	int usbg_ret;
+
+	dt = (struct gt_gadget_disable_data *)data;
+
+	if (dt->gadget) {
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+		if (g == NULL) {
+			fprintf(stderr, "Gadget '%s' not found\n", dt->gadget);
+			return -1;
+		}
+	} else if (dt->udc) {
+		u = usbg_get_udc(backend_ctx.libusbg_state, dt->udc);
+		if (u == NULL) {
+			fprintf(stderr, "UDC '%s' not found\n", dt->udc);
+			return -1;
+		}
+
+		g = usbg_get_udc_gadget(u);
+		if (g == NULL) {
+			fprintf(stderr, "No gadget enabled on this UDC\n");
+			return -1;
+		}
+	} else {
+		/*TODO disabling default gadget */
+		fprintf(stderr, "Gadget not specified\n");
+		return -1;
+	}
+
+	usbg_ret = usbg_disable_gadget(g);
+	if (usbg_ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error on disable gadget: %s : %s\n",
+			usbg_error_name(usbg_ret), usbg_strerror(usbg_ret));
+		return -1;
+	}
+
+	return 0;
+}
+
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
 	.rm = rm_func,
 	.get = NULL,
 	.set = NULL,
 	.enable = enable_func,
-	.disable = NULL,
+	.disable = disable_func,
 	.gadget = NULL,
 	.load = NULL,
 	.save = NULL,
