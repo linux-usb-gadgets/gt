@@ -20,6 +20,27 @@
 #include "gadget.h"
 #include "backend.h"
 #include "common.h"
+#include "settings.h"
+
+/**
+ * @brief Get implicite gadget
+ * @param[in] s Usbg state
+ * @return Default gadget if exists, only gadget when only one gadget exists,
+ * or NULL if cannot select an implicite gadget.
+ */
+static usbg_gadget *get_implicite_gadget(usbg_state *s) {
+	usbg_gadget *g;
+
+	g = usbg_get_first_gadget(s);
+	if (usbg_get_next_gadget(g) == NULL)
+		return g;
+
+	if (gt_settings.default_gadget)
+		g = usbg_get_gadget(backend_ctx.libusbg_state,
+				gt_settings.default_gadget);
+
+	return g;
+}
 
 static int create_func(void *data)
 {
@@ -140,10 +161,18 @@ static int enable_func(void *data)
 		}
 	}
 
-	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
-	if (g == NULL) {
-		fprintf(stderr, "Failed to get gadget\n");
-		return -1;
+	if (dt->gadget) {
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+		if (g == NULL) {
+			fprintf(stderr, "Failed to get gadget\n");
+			return -1;
+		}
+	} else {
+		g = get_implicite_gadget(backend_ctx.libusbg_state);
+		if (g == NULL) {
+			fprintf(stderr, "Gadget not specified\n");
+			return -1;
+		}
 	}
 
 	usbg_ret = usbg_enable_gadget(g, udc);
@@ -184,9 +213,11 @@ static int disable_func(void *data)
 			return -1;
 		}
 	} else {
-		/*TODO disabling default gadget */
-		fprintf(stderr, "Gadget not specified\n");
-		return -1;
+		g = get_implicite_gadget(backend_ctx.libusbg_state);
+		if (g == NULL) {
+			fprintf(stderr, "Gadget not specified\n");
+			return -1;
+		}
 	}
 
 	usbg_ret = usbg_disable_gadget(g);
