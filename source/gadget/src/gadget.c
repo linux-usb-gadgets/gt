@@ -335,7 +335,14 @@ out:
 
 static int gt_gadget_enable_help(void *data)
 {
-	printf("Gadget enable help.\n");
+	printf("usage: %s disable [options] [gadget] \n"
+	       "Remove gadget of specified name\n"
+	       "\n"
+	       "Options:\n"
+	       "  -u=<udc>, --udc=<udc>\tDisable gadget which is active at given udc\n"
+	       "  -h, --help\tPrint this help\n",
+	       program_name);
+
 	return -1;
 }
 
@@ -376,7 +383,17 @@ out:
 
 static int gt_gadget_disable_help(void *data)
 {
-	printf("Gadget disable help.\n");
+	printf("usage: %s disable [options] [gadget] \n"
+	       "Disable gadget. If gadget has been specified it is disabled, otherwise: if "
+	       "only one gadget exist it is used, if more than one gadget exist including "
+	       "default gadget, the default is disabled else error due to ambiguous gadget name "
+	       "unless -u or --udc option was used."
+	       "\n"
+	       "Options:\n"
+	       "  -u=<udc>, --udc=<udc>\tDisable gadget which is active at given udc\n"
+	       "  -h, --help\tPrint this help\n",
+	       program_name);
+
 	return -1;
 }
 
