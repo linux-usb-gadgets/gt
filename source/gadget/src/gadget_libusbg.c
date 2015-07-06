@@ -230,40 +230,28 @@ static int disable_func(void *data)
 	return 0;
 }
 
-static int print_gadget_attrs(usbg_gadget *g, int *mask) {
-	usbg_gadget_attrs g_attrs;
-	int usbg_ret;
-
-	usbg_ret = usbg_get_gadget_attrs(g, &g_attrs);
-	if (usbg_ret != USBG_SUCCESS) {
-		fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
-			usbg_strerror(usbg_ret));
-		return -1;
-	}
-
-	if (mask[BCD_USB])
+static void print_gadget_attrs(usbg_gadget_attrs *g_attrs, int *mask) {
+	if (!mask || mask[BCD_USB])
 		printf("  bcdUSB\t\t%x.%02x\n",
-			g_attrs.bcdUSB >> 8,
-			g_attrs.bcdUSB & 0x00ff);
+			g_attrs->bcdUSB >> 8,
+			g_attrs->bcdUSB & 0x00ff);
 
-	if (mask[B_DEVICE_CLASS])
-		printf("  bDeviceClass\t\t0x%02x\n", g_attrs.bDeviceClass);
-	if (mask[B_DEVICE_SUB_CLASS])
-		printf("  bDeviceSubClass\t0x%02x\n", g_attrs.bDeviceSubClass);
-	if (mask[B_DEVICE_PROTOCOL])
-		printf("  bDeviceProtocol\t0x%02x\n", g_attrs.bDeviceProtocol);
-	if (mask[B_MAX_PACKET_SIZE_0])
-		printf("  bMaxPacketSize0\t%d\n", g_attrs.bMaxPacketSize0);
-	if (mask[ID_VENDOR])
-		printf("  idVendor\t\t0x%04x\n", g_attrs.idVendor);
-	if (mask[ID_PRODUCT])
-		printf("  idProduct\t\t0x%04x\n", g_attrs.idProduct);
-	if (mask[BCD_DEVICE])
+	if (!mask || mask[B_DEVICE_CLASS])
+		printf("  bDeviceClass\t\t0x%02x\n", g_attrs->bDeviceClass);
+	if (!mask || mask[B_DEVICE_SUB_CLASS])
+		printf("  bDeviceSubClass\t0x%02x\n", g_attrs->bDeviceSubClass);
+	if (!mask || mask[B_DEVICE_PROTOCOL])
+		printf("  bDeviceProtocol\t0x%02x\n", g_attrs->bDeviceProtocol);
+	if (!mask || mask[B_MAX_PACKET_SIZE_0])
+		printf("  bMaxPacketSize0\t%d\n", g_attrs->bMaxPacketSize0);
+	if (!mask || mask[ID_VENDOR])
+		printf("  idVendor\t\t0x%04x\n", g_attrs->idVendor);
+	if (!mask || mask[ID_PRODUCT])
+		printf("  idProduct\t\t0x%04x\n", g_attrs->idProduct);
+	if (!mask || mask[BCD_DEVICE])
 		printf("  bcdDevice\t\t%x.%02x\n",
-			g_attrs.bcdDevice >> 8,
-			g_attrs.bcdDevice & 0x00ff);
-
-	return 0;
+			g_attrs->bcdDevice >> 8,
+			g_attrs->bcdDevice & 0x00ff);
 }
 
 static int get_func(void *data)
@@ -271,7 +259,8 @@ static int get_func(void *data)
 	struct gt_gadget_get_data *dt;
 
 	usbg_gadget *g;
-	int ret;
+	usbg_gadget_attrs g_attrs;
+	int usbg_ret;
 
 	dt = (struct gt_gadget_get_data *)data;
 
@@ -281,9 +270,90 @@ static int get_func(void *data)
 		return -1;
 	}
 
-	ret = print_gadget_attrs(g, dt->attrs);
+	usbg_ret = usbg_get_gadget_attrs(g, &g_attrs);
+	if (usbg_ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
+			usbg_strerror(usbg_ret));
+		return -1;
+	}
 
-	return ret;
+	print_gadget_attrs(&g_attrs, dt->attrs);
+
+	return 0;
+}
+
+static int print_gadget(usbg_gadget *g, int opts)
+{
+	usbg_gadget_attrs g_attrs;
+	usbg_udc *u;
+	int usbg_ret;
+	const char *name;
+
+	usbg_ret = usbg_get_gadget_attrs(g, &g_attrs);
+	if (usbg_ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error: %s : %s\n",
+			usbg_error_name(usbg_ret), usbg_strerror(usbg_ret));
+		return -1;
+	}
+
+	name = usbg_get_gadget_name(g);
+	if (name == NULL) {
+		fprintf(stderr, "Unable to get gadget name\n");
+		return -1;
+	}
+
+	if (opts & GT_QUIET) {
+		printf("%s\n", name);
+	} else {
+		printf("ID %04x:%04x '%s'", g_attrs.idVendor,
+				g_attrs.idProduct, name);
+
+		u = usbg_get_gadget_udc(g);
+		if (u) {
+			printf("\t%s", usbg_get_udc_name(u));
+		}
+
+		putchar('\n');
+	}
+
+	if (opts & GT_VERBOSE)
+		print_gadget_attrs(&g_attrs, NULL);
+
+	/* TODO --recursive*/
+
+	return 0;
+}
+
+static int gadget_func(void *data)
+{
+	struct gt_gadget_gadget_data *dt;
+
+	usbg_gadget *g;
+	int usbg_ret = 0;
+
+	dt = (struct gt_gadget_gadget_data *)data;
+
+	if (dt->name) {
+		g = usbg_get_gadget(backend_ctx.libusbg_state, dt->name);
+		if (g == NULL) {
+			fprintf(stderr, "Gadget '%s' not found\n", dt->name);
+			return -1;
+		}
+
+		usbg_ret = print_gadget(g, dt->opts);
+		if (usbg_ret < 0)
+			goto out;
+
+	} else {
+		usbg_for_each_gadget(g, backend_ctx.libusbg_state) {
+			usbg_ret = print_gadget(g, dt->opts);
+			if (usbg_ret < 0)
+				goto out;
+		}
+	}
+
+out:
+	return usbg_ret;
 }
 
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
@@ -293,7 +363,7 @@ struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.set = NULL,
 	.enable = enable_func,
 	.disable = disable_func,
-	.gadget = NULL,
+	.gadget = gadget_func,
 	.load = NULL,
 	.save = NULL,
 	.template_default = NULL,

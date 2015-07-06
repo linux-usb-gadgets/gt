@@ -466,7 +466,17 @@ out:
 
 static int gt_gadget_gadget_help(void *data)
 {
-	printf("Gadget gadget help.\n");
+	printf("usage: %s gadget [options] [gadget] \n"
+	       "If no gadget specified shows the list of gadgets, otherwise shows the gadget "
+	       "name, list of configurations and list of functions."
+	       "\n"
+	       "Options:\n"
+	       "  -v, --verbose\t\tShow not only name of gadget but also its attributes\n"
+	       "  -r, --recursive\tShow the details about each function and configuration\n"
+	       "  -q, --quiet\t\tShow only list of gadget names\n"
+	       "  -h, --help\t\tPrint this help\n",
+	       program_name);
+
 	return -1;
 }
 
@@ -475,7 +485,7 @@ static void gt_parse_gadget_gadget(const Command *cmd, int argc,
 {
 	struct gt_gadget_gadget_data *dt;
 	int ind;
-	int avaible_opts = GT_RECURSIVE | GT_VERBOSE | GT_HELP;
+	int avaible_opts = GT_RECURSIVE | GT_VERBOSE | GT_HELP | GT_QUIET;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)

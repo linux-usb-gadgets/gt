@@ -188,6 +188,7 @@ int gt_get_options(int *optmask, int allowed_opts, int argc, char **argv)
 		{GT_STDIN, {"stdin", no_argument, 0, 1}},
 		{GT_STDIN, {"stdout", no_argument, 0, 2}},
 		{GT_HELP, {"help", no_argument, 0, 'h'}},
+		{GT_QUIET, {"quiet", no_argument, 0, 'q'}},
 		{0, {NULL, 0, 0, 0}}
 	};
 
@@ -240,6 +241,9 @@ int gt_get_options(int *optmask, int allowed_opts, int argc, char **argv)
 			break;
 		case 'h':
 			*optmask |= GT_HELP;
+			break;
+		case 'q':
+			*optmask |= GT_QUIET;
 			break;
 		default:
 			return -1;
