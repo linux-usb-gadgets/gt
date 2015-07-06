@@ -26,11 +26,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <libgen.h>
+#include <libconfig.h>
 
 #include "common.h"
 #include "parser.h"
 #include "backend.h"
 #include "executable_command.h"
+#include "settings.h"
 
 char *program_name;
 
@@ -52,16 +54,25 @@ int main(int argc, char **argv)
 	int ret;
 	ExecutableCommand cmd;
 	char *buf = NULL;
+	config_t cfg;
 
 	program_name = program_name_get(argv[0], &buf);
 	ret = gt_backend_init(program_name, 0);
 	if (ret < 0)
 		goto out;
+
+	config_init(&cfg);
+	ret = gt_parse_settings(&cfg);
+	if (ret < 0)
+		goto out1;
+
 	gt_parse_commands(argc, argv, &cmd);
 
 	ret = executable_command_exec(&cmd);
 	executable_command_clean(&cmd);
 
+out1:
+	config_destroy(&cfg);
 out:
 	free(buf);
 	return ret;

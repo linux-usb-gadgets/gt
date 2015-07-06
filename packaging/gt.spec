@@ -33,3 +33,4 @@ make
 %license LICENSE
 %defattr(-,root,root)
 /usr/local/bin/gt
+/etc/gt/gt.conf

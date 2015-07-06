@@ -17,7 +17,22 @@
 #ifndef __GADGET_TOOL_SETTINGS_SETTINGS_H__
 #define __GADGET_TOOL_SETTINGS_SETTINGS_H__
 
+#include <libconfig.h>
+
 #include "command.h"
+
+/* user settings file */
+#define GT_USER_SETTING_PATH "~/.gt.conf"
+
+struct gt_setting_list {
+	const char *default_udc;
+	const char *configfs_path;
+	const char **lookup_path;
+	const char *default_template_path;
+	const char *default_gadget;
+};
+
+extern struct gt_setting_list gt_settings;
 
 /**
  * @brief Gets the next possible commands after settings
@@ -36,5 +51,11 @@ const Command *gt_settings_get_children(const Command *cmd);
  * @return -1 because invalid syntax has been provided
  */
 int gt_settings_help(void *data);
+
+/**
+ * @brief Parse settings
+ * @return 0 if success, -1 when error occured
+ */
+int gt_parse_settings(config_t *config);
 
 #endif //__GADGET_TOOL_SETTINGS_SETTINGS_H__

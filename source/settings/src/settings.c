@@ -17,16 +17,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libconfig.h>
+#include <sys/stat.h>
 
 #include "settings.h"
 #include "common.h"
 #include "parser.h"
 
+/* Some default values for settings are set here.
+ * Settings file will override them if exists. */
+struct gt_setting_list gt_settings = {
+	.default_udc = NULL,
+	.configfs_path = "/sys/kernel/config/",
+	.lookup_path = NULL,
+	.default_template_path = ".",
+	.default_gadget = "g1",
+};
+
 static int gt_check_settings_var(const char *name)
 {
 	static const char *vars[] = {
 		"default-udc",
-		"config-fs-path",
+		"configfs-path",
 		"lookup-path",
 		"default-template-path",
 		"default-gadget",
@@ -264,4 +276,71 @@ const Command *gt_settings_get_children(const Command *cmd)
 	};
 
 	return commands;
+}
+
+int gt_parse_settings(config_t *config)
+{
+	config_setting_t *node, *root, *elem;
+	int i, len, ret;
+	struct stat st;
+	const char *filename;
+
+	if (stat(GT_USER_SETTING_PATH, &st) == 0)
+		filename = GT_USER_SETTING_PATH;
+	else
+		filename = GT_SETTING_PATH;
+
+	ret = config_read_file(config, filename);
+	if (ret == CONFIG_FALSE)
+		return -1;
+
+	root = config_root_setting(config);
+
+#define GET_SETTING(name, field) do { \
+	node = config_setting_get_member(root, name); \
+	if (node) { \
+		if (config_setting_type(node) != CONFIG_TYPE_STRING) { \
+			fprintf(stderr, "%s:%d: Expected string\n", \
+					config_setting_source_file(node), \
+					config_setting_source_line(node)); \
+			return -1; \
+		} \
+		gt_settings.field = config_setting_get_string(node); \
+	} \
+} while (0)
+
+	GET_SETTING("default-udc", default_udc);
+	GET_SETTING("configfs-path", configfs_path);
+	GET_SETTING("default-template-path", default_template_path);
+	GET_SETTING("default-gadget", default_gadget);
+
+	node = config_setting_get_member(root, "lookup-path");
+	if (node) {
+		if (config_setting_is_aggregate(node) == CONFIG_FALSE) {
+			fprintf(stderr, "%s:%d: Expected list\n",
+					config_setting_source_file(node),
+					config_setting_source_line(node));
+			return -1;
+		}
+
+		len = config_setting_length(node);
+		gt_settings.lookup_path = calloc(len + 1, sizeof(*gt_settings.lookup_path));
+		for (i = 0; i < len; ++i) {
+			elem = config_setting_get_elem(node, i);
+			if (config_setting_type(elem) != CONFIG_TYPE_STRING) {
+				fprintf(stderr, "%s:%d: Expected string\n",
+					config_setting_source_file(elem),
+					config_setting_source_line(elem));
+				goto out;
+			}
+			gt_settings.lookup_path[i] = config_setting_get_string(elem);
+		}
+	}
+
+#undef GET_SETTING
+
+	return 0;
+out:
+	free(gt_settings.lookup_path);
+	return -1;
 }
