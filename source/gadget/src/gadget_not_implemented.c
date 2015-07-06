@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 
+#include <usbg/usbg.h>
+
 #include "gadget.h"
 #include "backend.h"
 #include "common.h"
@@ -46,17 +48,15 @@ static int rm_func(void *data)
 static int get_func(void *data)
 {
 	struct gt_gadget_get_data *dt;
-	const char **ptr;
+	int i;
 
 	dt = (struct gt_gadget_get_data *)data;
 	printf("Gadget get called successfully. Not implemented yet.\n");
 	printf("name = %s, attrs = ", dt->name);
 
-	ptr = dt->attrs;
-	while (*ptr) {
-		printf("%s, ", *ptr);
-		ptr++;
-	}
+	for (i = 0; i < ARRAY_SIZE(dt->attrs); ++i)
+		if (dt->attrs[i] > 0)
+			printf("%s, ", usbg_get_gadget_attr_str(i));
 
 	putchar('\n');
 	return 0;

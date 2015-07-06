@@ -199,10 +199,66 @@ static int disable_func(void *data)
 	return 0;
 }
 
+static int print_gadget_attrs(usbg_gadget *g, int *mask) {
+	usbg_gadget_attrs g_attrs;
+	int usbg_ret;
+
+	usbg_ret = usbg_get_gadget_attrs(g, &g_attrs);
+	if (usbg_ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
+			usbg_strerror(usbg_ret));
+		return -1;
+	}
+
+	if (mask[BCD_USB])
+		printf("  bcdUSB\t\t%x.%02x\n",
+			g_attrs.bcdUSB >> 8,
+			g_attrs.bcdUSB & 0x00ff);
+
+	if (mask[B_DEVICE_CLASS])
+		printf("  bDeviceClass\t\t0x%02x\n", g_attrs.bDeviceClass);
+	if (mask[B_DEVICE_SUB_CLASS])
+		printf("  bDeviceSubClass\t0x%02x\n", g_attrs.bDeviceSubClass);
+	if (mask[B_DEVICE_PROTOCOL])
+		printf("  bDeviceProtocol\t0x%02x\n", g_attrs.bDeviceProtocol);
+	if (mask[B_MAX_PACKET_SIZE_0])
+		printf("  bMaxPacketSize0\t%d\n", g_attrs.bMaxPacketSize0);
+	if (mask[ID_VENDOR])
+		printf("  idVendor\t\t0x%04x\n", g_attrs.idVendor);
+	if (mask[ID_PRODUCT])
+		printf("  idProduct\t\t0x%04x\n", g_attrs.idProduct);
+	if (mask[BCD_DEVICE])
+		printf("  bcdDevice\t\t%x.%02x\n",
+			g_attrs.bcdDevice >> 8,
+			g_attrs.bcdDevice & 0x00ff);
+
+	return 0;
+}
+
+static int get_func(void *data)
+{
+	struct gt_gadget_get_data *dt;
+
+	usbg_gadget *g;
+	int ret;
+
+	dt = (struct gt_gadget_get_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->name);
+	if (g == NULL) {
+		fprintf(stderr, "Gadget '%s' not found\n", dt->name);
+		return -1;
+	}
+
+	ret = print_gadget_attrs(g, dt->attrs);
+
+	return ret;
+}
+
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
 	.rm = rm_func,
-	.get = NULL,
+	.get = get_func,
 	.set = NULL,
 	.enable = enable_func,
 	.disable = disable_func,

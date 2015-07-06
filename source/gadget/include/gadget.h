@@ -104,7 +104,7 @@ struct gt_gadget_rm_data {
 
 struct gt_gadget_get_data {
 	const char *name;
-	const char **attrs;
+	int attrs[USBG_GADGET_ATTR_MAX];
 	int opts;
 };
 

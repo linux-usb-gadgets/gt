@@ -237,13 +237,18 @@ static void gt_gadget_get_destructor(void *data)
 		return;
 	dt = (struct gt_gadget_get_data *)data;
 
-	free(dt->attrs);
 	free(dt);
 }
 
 static int gt_gadget_get_help(void *data)
 {
-	printf("Gadget get help.\n");
+	printf("usage: %s get <gadget_name> [attr] ...\n"
+	       "Print gadget attributes and their values. "
+	       "If attr has not been given, all attributes are printed.\n"
+	       "\n"
+	       "Options:\n"
+	       "  -h, --help\tPrint this help\n",
+	       program_name);
 	return -1;
 }
 
@@ -251,9 +256,11 @@ static void gt_parse_gadget_get(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void * data)
 {
 	struct gt_gadget_get_data *dt = NULL;
-	int i;
+	int iter;
 	int ind;
 	int avaible_opts = GT_HELP;
+	int attr_id;
+	int i;
 
 	if (argc == 0)
 		goto out;
@@ -267,13 +274,28 @@ static void gt_parse_gadget_get(const Command *cmd, int argc, char **argv,
 		goto out;
 
 	dt->name = argv[ind++];
-	dt->attrs = calloc(argc - ind + 1, sizeof(char *));
-	if (dt->attrs == NULL)
-		goto out;
 
-	i = 0;
-	while (argv[ind])
-		dt->attrs[i++] = argv[ind++];
+	for (i = 0; i < USBG_GADGET_ATTR_MAX; ++i)
+		dt->attrs[i] = 0;
+
+	iter = 0;
+	while (argv[ind]) {
+		attr_id = usbg_lookup_gadget_attr(argv[ind]);
+		if (attr_id < 0) {
+			fprintf(stderr, "%s: invalid attribute name\n", argv[ind]);
+			goto out;
+		}
+
+		dt->attrs[attr_id] = 1;
+		ind++;
+		iter = 1;
+	}
+
+	if (!iter) {
+		for (i = 0; i < USBG_GADGET_ATTR_MAX; ++i)
+			dt->attrs[i] = 1;
+	}
+
 
 	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
 			gt_gadget_get_destructor);
@@ -335,11 +357,10 @@ out:
 
 static int gt_gadget_enable_help(void *data)
 {
-	printf("usage: %s disable [options] [gadget] \n"
-	       "Remove gadget of specified name\n"
+	printf("usage: %s enable <gadget> [udc] \n"
+	       "Enable gadget. If udc has not been specified, default one is used.\n"
 	       "\n"
 	       "Options:\n"
-	       "  -u=<udc>, --udc=<udc>\tDisable gadget which is active at given udc\n"
 	       "  -h, --help\tPrint this help\n",
 	       program_name);
 
