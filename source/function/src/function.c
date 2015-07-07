@@ -141,7 +141,11 @@ out:
 static int gt_func_list_types_help(void *data)
 {
 	printf("usage: %s func list-types\n"
-	       "List available function types.\n",
+	       "List available function types.\n"
+	       "\n"
+	       "Options:\n"
+	       "  -q, --quiet\tPrint only list of types\n"
+	       "  -h, --help\tPrintf this help\n",
 		program_name);
 	return 0;
 }
@@ -149,11 +153,27 @@ static int gt_func_list_types_help(void *data)
 static void gt_parse_func_list_types(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
-	if (argc == 0)
-		executable_command_set(exec, GET_EXECUTABLE(list_types),
-				NULL, NULL);
-	else
-		executable_command_set(exec, gt_func_list_types_help, NULL, NULL);
+	struct gt_func_list_types_data *dt = NULL;
+	int avaible_opts = GT_QUIET | GT_HELP;
+	int ind;
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	ind = gt_get_options(&dt->opts, avaible_opts, argc, argv);
+	if (ind < 0 || dt->opts & GT_HELP)
+		goto out;
+
+	if (argc - ind != 0)
+		goto out;
+
+	executable_command_set(exec, GET_EXECUTABLE(list_types),
+				(void *)dt, free);
+	return;
+
+out:
+	executable_command_set(exec, gt_func_list_types_help, NULL, NULL);
 
 }
 

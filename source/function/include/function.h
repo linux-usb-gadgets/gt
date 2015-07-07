@@ -90,6 +90,10 @@ struct gt_func_rm_data {
 	int opts;
 };
 
+struct gt_func_list_types_data {
+	int opts;
+};
+
 struct gt_func_get_data {
 	const char *gadget;
 	const char *type;

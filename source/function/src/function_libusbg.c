@@ -65,7 +65,13 @@ static int create_func(void *data)
 static int list_types_func(void *data)
 {
 	int i;
-	printf("Functions known by library:\n");
+	struct gt_func_list_types_data *dt;
+
+	dt = (struct gt_func_list_types_data *)data;
+
+	if (!(dt->opts & GT_QUIET))
+		printf("Functions known by library:\n");
+
 	for (i = USBG_FUNCTION_TYPE_MIN; i < USBG_FUNCTION_TYPE_MAX; i++)
 		printf("  %s\n", usbg_get_function_type_str(i));
 

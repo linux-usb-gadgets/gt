@@ -85,6 +85,9 @@ static int list_types_func(void *data)
 	GVariantIter *iter;
 	GVariant *v;
 	gchar *s;
+	struct gt_func_list_types_data *dt;
+
+	dt = (struct gt_func_list_types_data *)data;
 
 	v = g_dbus_connection_call_sync(backend_ctx.gadgetd_conn,
 					"org.usb.gadgetd",
@@ -103,7 +106,9 @@ static int list_types_func(void *data)
 		return -1;
 	}
 
-	printf("Discovered functions:\n");
+	if (!(dt->opts & GT_QUIET))
+		printf("Discovered functions:\n");
+
 	g_variant_get(v, "(as)", &iter);
 	while (g_variant_iter_loop(iter, "s", &s))
 	       printf("  %s\n", s);
