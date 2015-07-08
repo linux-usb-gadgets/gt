@@ -515,7 +515,17 @@ out:
 
 static int gt_gadget_load_help(void *data)
 {
-	printf("Gadget load help\n");
+	printf("usage: %s load <name> [gadget_name]\n"
+	       "Loads the gadget settings related to name, creates and enables\n"
+	       "the created gadget.\n"
+	       "Options:\n"
+	       "  -o, --off\t\tDon't enable gadget after load\n"
+	       "  --file=<gadget_file>\tloads gadget from file instead of from paths\n"
+	       "  --stdin\t\tloads gadget from stdin\n"
+	       "  --path=<path>\t\tloads gadget located in some path instead of from standard paths\n"
+	       "  -h, --help\t\tPrint this help\n",
+	       program_name);
+
 	return -1;
 }
 
@@ -583,6 +593,9 @@ static void gt_parse_gadget_load(const Command *cmd, int argc,
 
 	if (optind < argc)
 		dt->gadget_name = argv[optind++];
+
+	if (dt->gadget_name == NULL)
+		dt->gadget_name = dt->name;
 
 	executable_command_set(exec, GET_EXECUTABLE(load), (void *)dt, free);
 	return;

@@ -16,6 +16,7 @@
 
 #include <usbg/usbg.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "gadget.h"
 #include "backend.h"
@@ -356,6 +357,95 @@ out:
 	return usbg_ret;
 }
 
+static int load_func(void *data)
+{
+	FILE *fp = NULL;
+	struct gt_gadget_load_data *dt;
+	const char *filename = NULL;
+	const char **ptr;
+	struct stat st;
+	char buf[PATH_MAX];
+	usbg_gadget *g;
+	int ret;
+
+	dt = (struct gt_gadget_load_data *)data;
+
+	if (dt->opts & GT_STDIN) {
+		fp = stdin;
+	} else if (dt->file) {
+		filename = dt->file;
+	} else if (dt->path) {
+		ret = snprintf(buf, sizeof(buf), "%s/%s", dt->path, dt->name);
+		if (ret >= sizeof(buf)) {
+			fprintf(stderr, "path too long\n");
+			return -1;
+		}
+
+		filename = buf;
+	} else {
+		if (gt_settings.lookup_path != NULL) {
+			ptr = gt_settings.lookup_path;
+			while (*ptr) {
+				ret = snprintf(buf, sizeof(buf), "%s/%s", *ptr, dt->name);
+				if (ret >= sizeof(buf)) {
+					fprintf(stderr, "path too long\n");
+					return -1;
+				}
+
+				if (stat(buf, &st) == 0) {
+					filename = buf;
+					break;
+				}
+
+				ptr++;
+			}
+		}
+
+		/* use current directory as path */
+		if (filename == NULL && stat(dt->name, &st) == 0)
+			filename = dt->name;
+	}
+
+	if (filename == NULL && fp == NULL) {
+		fprintf(stderr, "Could not find matching gadget file.\n");
+		return -1;
+	}
+
+	if (fp == NULL) {
+		fp = fopen(filename, "r");
+		if (fp == NULL) {
+			perror("Error opening file");
+			return -1;
+		}
+	}
+
+	ret = usbg_import_gadget(backend_ctx.libusbg_state, fp, dt->gadget_name, &g);
+	if (ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error on import gadget\n");
+		fprintf(stderr, "Error: %s : %s\n", usbg_error_name(ret),
+				usbg_strerror(ret));
+		if (ret == USBG_ERROR_INVALID_FORMAT)
+			fprintf(stderr, "Line: %d. Error: %s\n",
+				usbg_get_gadget_import_error_line(backend_ctx.libusbg_state),
+				usbg_get_gadget_import_error_text(backend_ctx.libusbg_state));
+		goto out;
+	}
+
+	if (!(dt->opts & GT_OFF)) {
+		ret = usbg_enable_gadget(g, NULL);
+		if (ret != USBG_SUCCESS) {
+			fprintf(stderr, "Failed to enable gadget %s\n", usbg_strerror(ret));
+			goto out;
+		}
+	}
+
+out:
+	if (fp != stdin)
+		fclose(fp);
+
+	return ret;
+}
+
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
 	.rm = rm_func,
@@ -364,7 +454,7 @@ struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.enable = enable_func,
 	.disable = disable_func,
 	.gadget = gadget_func,
-	.load = NULL,
+	.load = load_func,
 	.save = NULL,
 	.template_default = NULL,
 	.template_get = NULL,
