@@ -446,6 +446,76 @@ out:
 	return ret;
 }
 
+static int save_func(void *data)
+{
+	struct gt_gadget_save_data *dt;
+	const char *filename = NULL;
+	FILE *fp = NULL;
+	char buf[PATH_MAX];
+	usbg_gadget *g;
+	struct stat st;
+	int ret;
+
+	dt = (struct gt_gadget_save_data *)data;
+
+	if (dt->opts & GT_STDOUT) {
+		fp = stdout;
+	} else if (dt->file) {
+		filename = dt->file;
+	} else if (dt->path) {
+		ret = snprintf(buf, sizeof(buf), "%s/%s", dt->path, dt->name);
+		if (ret >= sizeof(buf)) {
+			fprintf(stderr, "path too long\n");
+			return -1;
+		}
+
+		filename = buf;
+	} else if (gt_settings.default_template_path) {
+		ret = snprintf(buf, sizeof(buf), "%s/%s",
+				gt_settings.default_template_path, dt->name);
+		if (ret >= sizeof(buf)) {
+			fprintf(stderr, "path too long\n");
+			return -1;
+		}
+
+		filename = buf;
+	} else {
+		fprintf(stderr, "Path not specified\n");
+		return -1;
+	}
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+	if (!g) {
+		fprintf(stderr, "Error on get gadget\n");
+		return -1;
+	}
+
+	if (fp == NULL) {
+		if (!(dt->opts & GT_FORCE) && stat(filename, &st) == 0) {
+			fprintf(stderr, "File exists.\n");
+			return -1;
+		}
+
+		fp = fopen(filename, "w");
+		if (fp == NULL) {
+			perror("Error opening file\n");
+			return -1;
+		}
+	}
+
+	ret = usbg_export_gadget(g, fp);
+	if (ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error on export gadget\n");
+		fprintf(stderr, "Error: %s : %s\n", usbg_error_name(ret),
+				usbg_strerror(ret));
+		goto out;
+	}
+
+out:
+	fclose(fp);
+	return ret;
+}
+
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
 	.rm = rm_func,
@@ -455,7 +525,7 @@ struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.disable = disable_func,
 	.gadget = gadget_func,
 	.load = load_func,
-	.save = NULL,
+	.save = save_func,
 	.template_default = NULL,
 	.template_get = NULL,
 	.template_set = NULL,

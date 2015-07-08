@@ -617,7 +617,17 @@ static void gt_gadget_save_destructor(void *data)
 
 static int gt_gadget_save_help(void *data)
 {
-	printf("Gadget save help.\n");
+	printf("usage: %s save <gadget> [name]\n"
+	       "Stores the gadget configuration in system templates as name. If name\n"
+	       "not specified gadget's name is used. Sets the template attributes to\n"
+	       "given values.\n"
+	       "Options:\n"
+	       "  -f --force\t\toverride gadget template if exist\n"
+	       "  --file=<gadget_file>\tstores in file\n"
+	       "  --stdout\t\tprints the configuration to standard output\n"
+	       "  --path=<path>\t\tstores gadget in given path instead of default\n"
+	       "  -h, --help\t\tPrint this help\n",
+	       program_name);
 	return -1;
 }
 
@@ -687,6 +697,9 @@ static void gt_parse_gadget_save(const Command *cmd, int argc,
 			argv + optind);
 	if (c < 0)
 		goto out;
+
+	if (dt->name == NULL)
+		dt->name = dt->gadget;
 
 	executable_command_set(exec, GET_EXECUTABLE(save), (void *)dt,
 		gt_gadget_save_destructor);
