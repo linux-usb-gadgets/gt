@@ -17,6 +17,7 @@
 #include <usbg/usbg.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #include "gadget.h"
 #include "backend.h"
@@ -560,6 +561,53 @@ static int set_func(void *data)
 	return 0;
 }
 
+int template_filter(const struct dirent *entry)
+{
+	if (entry->d_name[0] == '.')
+		return 0;
+
+	return 1;
+}
+
+static int template_func(void *data)
+{
+	struct gt_gadget_template_data *dt;
+	struct dirent **dentry;
+	char buf[PATH_MAX];
+	int ret;
+	const char **ptr;
+
+	dt = (struct gt_gadget_template_data *)data;
+
+	if (gt_settings.lookup_path != NULL) {
+		ptr = gt_settings.lookup_path;
+		while (*ptr) {
+			ret = snprintf(buf, sizeof(buf), "%s/%s", *ptr, dt->name);
+			if (ret >= sizeof(buf)) {
+				fprintf(stderr, "path too long\n");
+				return -1;
+			}
+
+			ret = scandir(*ptr, &dentry, template_filter, alphasort);
+			if (ret < 0) {
+				perror("Error reading directory");
+				return -1;
+			}
+
+			while (ret--) {
+				printf("%s\n", dentry[ret]->d_name);
+				free(dentry[ret]);
+			}
+
+			free(dentry);
+
+			ptr++;
+		}
+	}
+
+	return 0;
+}
+
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
 	.rm = rm_func,
@@ -570,7 +618,7 @@ struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.gadget = gadget_func,
 	.load = load_func,
 	.save = save_func,
-	.template_default = NULL,
+	.template_default = template_func,
 	.template_get = NULL,
 	.template_set = NULL,
 	.template_rm = NULL,
