@@ -516,11 +516,55 @@ out:
 	return ret;
 }
 
+static int set_func(void *data)
+{
+	struct gt_gadget_set_data *dt;
+	int i;
+	usbg_gadget *g;
+	int ret;
+
+	dt = (struct gt_gadget_set_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->name);
+	if (!g) {
+		fprintf(stderr, "Error on get gadget\n");
+		return -1;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(dt->attr_val); ++i) {
+		if (dt->attr_val[i] < 0)
+			continue;
+
+		ret = usbg_set_gadget_attr(g, i, dt->attr_val[i]);
+		if (ret != USBG_SUCCESS) {
+			fprintf(stderr, "Unable to set attribute %s: %s\n",
+				usbg_get_gadget_attr_str(i),
+				usbg_strerror(ret));
+			return -1;
+		}
+	}
+
+	for (i = 0; i < G_N_ELEMENTS(dt->str_val); i++) {
+		if (dt->str_val[i] == NULL)
+			continue;
+
+		ret = gadget_strs[i].set_fn(g, LANG_US_ENG, dt->str_val[i]);
+		if (ret != USBG_SUCCESS) {
+			fprintf(stderr, "Unable to set string %s: %s\n",
+				gadget_strs[i].name,
+				usbg_strerror(ret));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 struct gt_gadget_backend gt_gadget_backend_libusbg = {
 	.create = create_func,
 	.rm = rm_func,
 	.get = get_func,
-	.set = NULL,
+	.set = set_func,
 	.enable = enable_func,
 	.disable = disable_func,
 	.gadget = gadget_func,

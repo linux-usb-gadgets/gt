@@ -110,7 +110,8 @@ struct gt_gadget_get_data {
 
 struct gt_gadget_set_data {
 	const char *name;
-	struct gt_setting *attrs;
+	int attr_val[USBG_GADGET_ATTR_MAX];
+	char *str_val[GT_GADGET_STRS_COUNT];
 	int opts;
 };
 

@@ -65,16 +65,26 @@ static int get_func(void *data)
 static int set_func(void *data)
 {
 	struct gt_gadget_set_data *dt;
-	struct gt_setting *ptr;
+	int i;
 
 	dt = (struct gt_gadget_set_data *)data;
 	printf("Gadget set called successfully. Not implemented.\n");
 	printf("name = %s", dt->name);
-	ptr = dt->attrs;
-	while (ptr->variable) {
-		printf(", %s = %s", ptr->variable, ptr->value);
-		ptr++;
+
+	for (i = 0; i < ARRAY_SIZE(dt->attr_val); ++i) {
+		if (dt->attr_val[i] >= 0) {
+			printf(", %s = %d", usbg_get_gadget_attr_str(i),
+					dt->attr_val[i]);
+		}
 	}
+
+	for (i = 0; i < ARRAY_SIZE(dt->str_val); ++i) {
+		if (dt->str_val[i] != NULL) {
+			printf(", %s = %s", gadget_strs[i].name,
+					dt->str_val[i]);
+		}
+	}
+
 	putchar('\n');
 	return 0;
 }

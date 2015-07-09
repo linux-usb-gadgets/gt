@@ -108,6 +108,54 @@ static int gt_gadget_create_help(void *data)
 	return 0;
 }
 
+static int gt_parse_gadget_attrs(struct gt_setting *attrs, int *attr_val, char **str_val)
+{
+	struct gt_setting *setting;
+	int attr_id;
+	_Bool iter;
+	int i;
+
+	for (setting = attrs; setting->variable; setting++) {
+		iter = TRUE;
+
+		attr_id = usbg_lookup_gadget_attr(setting->variable);
+		if (attr_id >= 0) {
+			unsigned long int val;
+			char *endptr = NULL;
+
+			errno = 0;
+			val = strtoul(setting->value, &endptr, 0);
+			if (errno
+			    || *setting->value == 0
+			    || (endptr && *endptr != 0)
+			    || attr_val_in_range(attr_id, val) == 0) {
+
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+
+			attr_val[attr_id] = val;
+			iter = FALSE;
+		}
+
+		for (i = 0; iter && i < GT_GADGET_STRS_COUNT; i++) {
+			if (streq(setting->variable, gadget_strs[i].name)) {
+				str_val[i] = setting->value;
+				iter = FALSE;
+				break;
+			}
+		}
+
+		if (iter) {
+			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void *data)
 {
@@ -115,8 +163,7 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 	int ind;
 	int c;
 	int avaible_opts = GT_FORCE | GT_HELP;
-	struct gt_setting *setting, *attrs = NULL;
-	_Bool iter;
+	struct gt_setting *attrs = NULL;
 	int i;
 
 	dt = zalloc(sizeof(*dt));
@@ -140,45 +187,7 @@ static void gt_parse_gadget_create(const Command *cmd, int argc, char **argv,
 		dt->attr_val[i] = -1;
 	memset(dt->str_val, 0, sizeof(dt->str_val));
 
-	for (setting = attrs; setting->variable; setting++) {
-		int attr_id;
-
-		iter = TRUE;
-
-		attr_id = usbg_lookup_gadget_attr(setting->variable);
-		if (attr_id >= 0) {
-			unsigned long int val;
-			char *endptr = NULL;
-
-			errno = 0;
-			val = strtoul(setting->value, &endptr, 0);
-			if (errno
-			    || *setting->value == 0
-			    || (endptr && *endptr != 0)
-			    || attr_val_in_range(attr_id, val) == 0) {
-
-				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
-					setting->value, setting->variable);
-				goto out;
-			}
-
-			dt->attr_val[attr_id] = val;
-			iter = FALSE;
-		}
-
-		for (i = 0; iter && i < GT_GADGET_STRS_COUNT; i++) {
-			if (streq(setting->variable, gadget_strs[i].name)) {
-				dt->str_val[i] = setting->value;
-				iter = FALSE;
-				break;
-			}
-		}
-
-		if (iter) {
-			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
-			goto out;
-		}
-	}
+	gt_parse_gadget_attrs(attrs, dt->attr_val, dt->str_val);
 
 	executable_command_set(exec, GET_EXECUTABLE(create),
 				(void *)dt, gt_gadget_create_destructor);
@@ -313,7 +322,6 @@ static void gt_gadget_set_destructor(void *data)
 	if (data == NULL)
 		return;
 	dt = (struct gt_gadget_set_data *)data;
-	gt_setting_list_cleanup(dt->attrs);
 	free(dt);
 }
 
@@ -330,6 +338,8 @@ static void gt_parse_gadget_set(const Command *cmd, int argc, char **argv,
 	int tmp;
 	int ind;
 	int avaible_opts = GT_HELP;
+	struct gt_setting *attrs;
+	int i;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
@@ -343,10 +353,15 @@ static void gt_parse_gadget_set(const Command *cmd, int argc, char **argv,
 		goto out;
 
 	dt->name = argv[ind++];
-	tmp = gt_parse_setting_list(&dt->attrs, argc - ind, argv + ind);
+	tmp = gt_parse_setting_list(&attrs, argc - ind, argv + ind);
 	if (tmp < 0)
 		goto out;
 
+	for (i = 0; i < USBG_GADGET_ATTR_MAX; i++)
+		dt->attr_val[i] = -1;
+	memset(dt->str_val, 0, sizeof(dt->str_val));
+
+	gt_parse_gadget_attrs(attrs, dt->attr_val, dt->str_val);
 	executable_command_set(exec, GET_EXECUTABLE(set), (void *)dt,
 			gt_gadget_set_destructor);
 	return;
