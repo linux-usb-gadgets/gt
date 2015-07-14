@@ -15,6 +15,7 @@
  */
 
 #include <stdio.h>
+#include <usbg/usbg.h>
 
 #include "function.h"
 #include "common.h"

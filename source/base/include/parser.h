@@ -85,6 +85,8 @@ enum gt_option_flags {
 	GT_STDOUT = 32,
 	GT_HELP = 64,
 	GT_QUIET = 128,
+	GT_INSTANCE = 256,
+	GT_TYPE = 512,
 };
 
 /**

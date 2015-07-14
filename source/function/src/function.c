@@ -324,12 +324,15 @@ static int gt_func_func_help(void *data)
 
 static int gt_func_show_help(void *data)
 {
-	printf("usage: %s func show <gadget> [<type> <instance>]\n"
-	       "Show functions. If no function was specified, show all functions\n\n",
+	printf("usage: %s func show <gadget> [type[ [instance]]\n"
+	       "Show functions. If no function was specified, show all functions.\n"
+	       "If only function type was specified show only functions of given type\n\n",
 		program_name);
 
 	printf("Options:\n"
 	       "  -v, --verbose\tShow also attributes\n"
+	       "  --instance\tShow only function instances (cannot be used with --type)\n"
+	       "  --type\t\tShow only function types (cannot be used with  --instance)\n"
 	       "  -h, --help\tPrint this help\n");
 
 	return 0;
@@ -340,7 +343,7 @@ static void gt_parse_func_show(const Command *cmd, int argc,
 {
 	struct gt_func_show_data *dt = NULL;
 	int ind;
-	int avaible_opts = GT_VERBOSE | GT_HELP;
+	int avaible_opts = GT_VERBOSE | GT_HELP | GT_INSTANCE | GT_TYPE;
 
 	if (argc < 1)
 		goto out;
@@ -353,12 +356,13 @@ static void gt_parse_func_show(const Command *cmd, int argc,
 	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
+	if (dt->opts & GT_INSTANCE && dt->opts & GT_TYPE)
+		goto out;
 
 	dt->gadget = argv[ind++];
+	dt->type = -1;
+	dt->instance = NULL;
 	if (argc > ind) {
-		if (argc - ind != 2)
-			goto out;
-
 		dt->type = usbg_lookup_function_type(argv[ind]);
 		if (dt->type < 0) {
 			fprintf(stderr, "Unknown function type: %s", argv[ind]);
@@ -366,7 +370,8 @@ static void gt_parse_func_show(const Command *cmd, int argc,
 		}
 
 		ind++;
-		dt->instance = argv[ind++];
+		if (argc > ind)
+			dt->instance = argv[ind++];
 	}
 
 	executable_command_set(exec, GET_EXECUTABLE(show), (void *)dt,

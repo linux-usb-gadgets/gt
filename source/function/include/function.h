@@ -171,6 +171,13 @@ const Command *gt_func_get_children(const Command *cmd);
  */
 int gt_func_help(void *data);
 
+/**
+ * @brief Print function
+ * @param[in] f Function to be printed
+ * @param[in] opts Options of printing
+ */
+int gt_print_function_libusbg(usbg_function *f, int opts);
+
 extern struct gt_function_backend gt_function_backend_libusbg;
 extern struct gt_function_backend gt_function_backend_gadgetd;
 extern struct gt_function_backend gt_function_backend_not_implemented;

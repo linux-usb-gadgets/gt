@@ -78,13 +78,151 @@ static int list_types_func(void *data)
 	return 0;
 }
 
+int gt_print_function_libusbg(usbg_function *f, int opts)
+{
+	const char *instance;
+	usbg_function_type type;
+	int usbg_ret;
+	usbg_function_attrs f_attrs;
+
+	instance = usbg_get_function_instance(f);
+	if (!instance) {
+		fprintf(stderr, "Unable to get function instance name\n");
+		return -1;
+	}
+
+	type = usbg_get_function_type(f);
+
+	if (opts & GT_INSTANCE)
+		printf("  %s\n", instance);
+	else if (opts & GT_TYPE)
+		printf("  %s\n", usbg_get_function_type_str(type));
+	else
+		fprintf(stdout, "  %s.%s\n",
+			usbg_get_function_type_str(type), instance);
+
+	usbg_ret = usbg_get_function_attrs(f, &f_attrs);
+	if (usbg_ret != USBG_SUCCESS) {
+		fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
+				usbg_strerror(usbg_ret));
+		return -1;
+	}
+
+	if (!(opts & GT_VERBOSE))
+		return 0;
+
+	switch (f_attrs.header.attrs_type) {
+	case USBG_F_ATTRS_SERIAL:
+		fprintf(stdout, "    port_num\t\t%d\n",
+				f_attrs.attrs.serial.port_num);
+		break;
+
+	case USBG_F_ATTRS_NET:
+	{
+		usbg_f_net_attrs *f_net_attrs = &f_attrs.attrs.net;
+
+		fprintf(stdout, "    dev_addr\t\t%s\n",
+			ether_ntoa(&f_net_attrs->dev_addr));
+		fprintf(stdout, "    host_addr\t\t%s\n",
+			ether_ntoa(&f_net_attrs->host_addr));
+		fprintf(stdout, "    ifname\t\t%s\n", f_net_attrs->ifname);
+		fprintf(stdout, "    qmult\t\t%d\n", f_net_attrs->qmult);
+		break;
+	}
+
+	case USBG_F_ATTRS_PHONET:
+		fprintf(stdout, "    ifname\t\t%s\n", f_attrs.attrs.phonet.ifname);
+		break;
+
+	case USBG_F_ATTRS_FFS:
+		fprintf(stdout, "    dev_name\t\t%s\n", f_attrs.attrs.ffs.dev_name);
+		break;
+
+	case USBG_F_ATTRS_MS:
+	{
+		usbg_f_ms_attrs *attrs = &f_attrs.attrs.ms;
+		int i;
+
+		fprintf(stdout, "    stall\t\t%d\n", attrs->stall);
+		fprintf(stdout, "    nluns\t\t%d\n", attrs->nluns);
+		for (i = 0; i < attrs->nluns; ++i) {
+			fprintf(stdout, "    lun %d:\n", attrs->luns[i]->id);
+			fprintf(stdout, "      cdrom\t\t%d\n", attrs->luns[i]->cdrom);
+			fprintf(stdout, "      ro\t\t%d\n", attrs->luns[i]->ro);
+			fprintf(stdout, "      nofua\t\t%d\n", attrs->luns[i]->nofua);
+			fprintf(stdout, "      removable\t\t%d\n", attrs->luns[i]->removable);
+			fprintf(stdout, "      file\t\t%s\n", attrs->luns[i]->filename);
+		}
+		break;
+	}
+
+	case USBG_F_ATTRS_MIDI:
+	{
+		usbg_f_midi_attrs *attrs = &f_attrs.attrs.midi;
+
+		fprintf(stdout, "    index\t\t%d\n", attrs->index);
+		fprintf(stdout, "    id\t\t\t%s\n", attrs->id);
+		fprintf(stdout, "    in_ports\t\t%d\n", attrs->in_ports);
+		fprintf(stdout, "    out_ports\t\t%d\n", attrs->out_ports);
+		fprintf(stdout, "    buflen\t\t%d\n", attrs->buflen);
+		fprintf(stdout, "    qlen\t\t%d\n", attrs->qlen);
+		break;
+	}
+
+	default:
+		fprintf(stdout, "    UNKNOWN\n");
+	}
+
+	usbg_cleanup_function_attrs(&f_attrs);
+	return 0;
+}
+
+static int show_func(void *data)
+{
+	struct gt_func_show_data *dt;
+	usbg_gadget *g;
+	usbg_function *f;
+
+	dt = (struct gt_func_show_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+	if (g == NULL) {
+		fprintf(stderr, "Unable to find gadget %s\n",
+			dt->gadget);
+		return -1;
+	}
+
+	if (dt->instance) {
+		f = usbg_get_function(g, dt->type, dt->instance);
+		if (f == NULL) {
+			fprintf(stderr, "Unable to find function: %s.%s\n",
+					usbg_get_function_type_str(dt->type),
+					dt->instance);
+			return -1;
+		}
+
+		gt_print_function_libusbg(f, dt->opts);
+	} else if (dt->type >= 0) {
+		usbg_for_each_function(f, g) {
+			if (dt->type == usbg_get_function_type(f))
+				gt_print_function_libusbg(f, dt->opts);
+		}
+	} else {
+		usbg_for_each_function(f, g) {
+			gt_print_function_libusbg(f, dt->opts);
+		}
+	}
+
+	return 0;
+}
+
 struct gt_function_backend gt_function_backend_libusbg = {
 	.create = create_func,
 	.rm = NULL,
 	.list_types = list_types_func,
 	.get = NULL,
 	.set = NULL,
-	.show = NULL,
+	.show = show_func,
 	.load = NULL,
 	.save = NULL,
 	.template_default = NULL,
