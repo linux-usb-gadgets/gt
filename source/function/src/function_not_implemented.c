@@ -90,17 +90,19 @@ static int set_func(void *data)
 	return 0;
 }
 
-static int func_func(void *data)
+static int show_func(void *data)
 {
-	struct gt_func_func_data *dt;
+	struct gt_func_show_data *dt;
 
-	dt = (struct gt_func_func_data *)data;
+	dt = (struct gt_func_show_data *)data;
 	printf("Func func called successfully. Not implemented.\n");
 	printf("gadget=%s", dt->gadget);
-	if (dt->type)
-		printf(", type=%s", dt->type);
-	if (dt->name)
-		printf(", name=%s", dt->name);
+
+	if (dt->instance) {
+		printf(", type=%s", usbg_get_function_type_str(dt->type));
+		printf(", instance=%s", dt->instance);
+	}
+
 	printf(", verbose=%d\n", !!(dt->opts & GT_VERBOSE));
 
 	return 0;
@@ -217,7 +219,7 @@ struct gt_function_backend gt_function_backend_not_implemented = {
 	.list_types = list_types_func,
 	.get = get_func,
 	.set = set_func,
-	.func = func_func,
+	.show = show_func,
 	.load = load_func,
 	.save = save_func,
 	.template_default = template_func,

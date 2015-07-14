@@ -19,6 +19,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <usbg/usbg.h>
 
 #include "function.h"
 #include "common.h"
@@ -291,14 +292,13 @@ out:
 	executable_command_set(exec, gt_func_get_help, data, NULL);
 }
 
-
-static void gt_func_func_destructor(void *data)
+static void gt_func_show_destructor(void *data)
 {
-	struct gt_func_func_data *dt;
+	struct gt_func_show_data *dt;
 
 	if (data == NULL)
 		return;
-	dt = (struct gt_func_func_data *)data;
+	dt = (struct gt_func_show_data *)data;
 	free(dt);
 }
 
@@ -309,6 +309,7 @@ static int gt_func_func_help(void *data)
 		program_name);
 
 	printf("Command:\n"
+	       "  show\n"
 	       "  create\n"
 	       "  rm\n"
 	       "  get\n"
@@ -321,10 +322,23 @@ static int gt_func_func_help(void *data)
 	return 0;
 }
 
-static void gt_parse_func_func(const Command *cmd, int argc,
+static int gt_func_show_help(void *data)
+{
+	printf("usage: %s func show <gadget> [<type> <instance>]\n"
+	       "Show functions. If no function was specified, show all functions\n\n",
+		program_name);
+
+	printf("Options:\n"
+	       "  -v, --verbose\tShow also attributes\n"
+	       "  -h, --help\tPrint this help\n");
+
+	return 0;
+}
+
+static void gt_parse_func_show(const Command *cmd, int argc,
 		char **argv, ExecutableCommand *exec, void * data)
 {
-	struct gt_func_func_data *dt = NULL;
+	struct gt_func_show_data *dt = NULL;
 	int ind;
 	int avaible_opts = GT_VERBOSE | GT_HELP;
 
@@ -339,21 +353,28 @@ static void gt_parse_func_func(const Command *cmd, int argc,
 	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
+
 	dt->gadget = argv[ind++];
 	if (argc > ind) {
 		if (argc - ind != 2)
 			goto out;
 
-		dt->type = argv[ind++];
-		dt->name = argv[ind++];
+		dt->type = usbg_lookup_function_type(argv[ind]);
+		if (dt->type < 0) {
+			fprintf(stderr, "Unknown function type: %s", argv[ind]);
+			goto out;
+		}
+
+		ind++;
+		dt->instance = argv[ind++];
 	}
 
-	executable_command_set(exec, GET_EXECUTABLE(func), (void *)dt,
-			gt_func_func_destructor);
+	executable_command_set(exec, GET_EXECUTABLE(show), (void *)dt,
+			gt_func_show_destructor);
 	return;
 out:
-	gt_func_func_destructor(dt);
-	executable_command_set(exec, gt_func_func_help, data, NULL);
+	gt_func_show_destructor(dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
 static int gt_func_load_help(void *data)
@@ -738,7 +759,8 @@ const Command *gt_func_get_children(const Command *cmd)
 		{"save", NEXT, gt_parse_func_save, NULL, gt_func_save_help},
 		{"template", NEXT, command_parse,
 			gt_func_template_get_children, gt_func_template_help},
-		{NULL, AGAIN, gt_parse_func_func, NULL, gt_func_func_help},
+		{"show", NEXT, gt_parse_func_show, NULL, gt_func_show_help},
+		{NULL, AGAIN, gt_parse_func_show, NULL, gt_func_func_help},
 		{NULL, AGAIN, NULL, NULL, NULL}
 	};
 	return commands;

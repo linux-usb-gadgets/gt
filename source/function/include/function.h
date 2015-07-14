@@ -48,7 +48,7 @@ struct gt_function_backend {
 	/**
 	 * Show functions
 	 */
-	int (*func)(void *);
+	int (*show)(void *);
 	/**
 	 * Load function from file
 	 */
@@ -110,10 +110,10 @@ struct gt_func_set_data {
 	int opts;
 };
 
-struct gt_func_func_data {
+struct gt_func_show_data {
 	const char *gadget;
-	const char *type;
-	const char *name;
+	int type;
+	const char *instance;
 	int opts;
 };
 
