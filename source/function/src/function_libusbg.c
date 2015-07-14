@@ -216,9 +216,59 @@ static int show_func(void *data)
 	return 0;
 }
 
+static int rm_func(void *data)
+{
+	struct gt_func_rm_data *dt;
+	usbg_gadget *g;
+	usbg_function *f;
+	usbg_udc *u;
+	int ret, opts = 0;
+
+	dt = (struct gt_func_rm_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+	if (g == NULL) {
+		fprintf(stderr, "Unable to find gadget %s\n",
+			dt->gadget);
+		return -1;
+	}
+
+	f = usbg_get_function(g, dt->type, dt->instance);
+	if (f == NULL) {
+		fprintf(stderr, "Unable to find function: %s.%s\n",
+				usbg_get_function_type_str(dt->type),
+				dt->instance);
+		return -1;
+	}
+
+	if (dt->opts & GT_RECURSIVE)
+		opts |= USBG_RM_RECURSE;
+
+	if (dt->opts & GT_FORCE) {
+		u = usbg_get_gadget_udc(g);
+		if (u == NULL) {
+			ret = usbg_disable_gadget(g);
+			if (ret < 0) {
+				fprintf(stderr, "Error disabling gadget: %s\n",
+						usbg_strerror(ret));
+				return -1;
+			}
+		}
+	}
+
+	ret = usbg_rm_function(f, opts);
+	if (ret < 0) {
+		fprintf(stderr, "Error removing function: %s\n",
+				usbg_strerror(ret));
+		return -1;
+	}
+
+	return ret;
+}
+
 struct gt_function_backend gt_function_backend_libusbg = {
 	.create = create_func,
-	.rm = NULL,
+	.rm = rm_func,
 	.list_types = list_types_func,
 	.get = NULL,
 	.set = NULL,

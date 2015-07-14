@@ -101,7 +101,15 @@ static void gt_func_rm_destructor(void *data)
 
 static int gt_func_rm_help(void *data)
 {
-	printf("Func rm help.\n");
+	printf("usage: %s func rm <gadget> <type> <instance>\n"
+	       "Remove function.\n"
+	       "\n"
+	       "Options:\n"
+	       "  -f, --force\tDisable gadget if necessary\n"
+	       "  -r, --recursive\tUnbind function from all configs\n"
+	       "  -h, --help\tPrint this help\n",
+		program_name);
+
 	return -1;
 }
 
@@ -124,8 +132,15 @@ static void gt_parse_func_rm(const Command *cmd, int argc,
 		goto out;
 
 	dt->gadget = argv[ind++];
-	dt->type = argv[ind++];
-	dt->name = argv[ind++];
+
+	dt->type = usbg_lookup_function_type(argv[ind]);
+	if (dt->type < 0) {
+		fprintf(stderr, "Unknown function type: %s", argv[ind]);
+		goto out;
+	}
+	ind++;
+
+	dt->instance = argv[ind++];
 
 	if (ind != argc)
 		goto out;

@@ -51,8 +51,9 @@ static int rm_func(void *data)
 
 	dt = (struct gt_func_rm_data *)data;
 	printf("Func rm called successfully. Not implemented.\n");
-	printf("gadget=%s, type=%s, name=%s, recursive=%d, force=%d\n",
-		dt->gadget, dt->type, dt->name, !!(dt->opts & GT_RECURSIVE),
+	printf("gadget=%s, type=%s, instance=%s, recursive=%d, force=%d\n",
+		dt->gadget, usbg_get_function_type_str(dt->type), dt->instance,
+		!!(dt->opts & GT_RECURSIVE),
 		!!(dt->opts & GT_FORCE));
 
 	return 0;

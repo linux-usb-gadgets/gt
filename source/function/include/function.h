@@ -85,8 +85,8 @@ struct gt_func_create_data {
 
 struct gt_func_rm_data {
 	const char *gadget;
-	const char *type;
-	const char *name;
+	int type;
+	const char *instance;
 	int opts;
 };
 
