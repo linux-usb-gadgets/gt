@@ -23,6 +23,7 @@
 #include "backend.h"
 #include "common.h"
 #include "settings.h"
+#include "function.h"
 
 /**
  * @brief Get implicite gadget
@@ -288,6 +289,7 @@ static int print_gadget(usbg_gadget *g, int opts)
 {
 	usbg_gadget_attrs g_attrs;
 	usbg_udc *u;
+	usbg_function *f;
 	int usbg_ret;
 	const char *name;
 
@@ -321,7 +323,13 @@ static int print_gadget(usbg_gadget *g, int opts)
 	if (opts & GT_VERBOSE)
 		print_gadget_attrs(&g_attrs, NULL);
 
-	/* TODO --recursive*/
+	if (opts & GT_RECURSIVE) {
+		usbg_for_each_function(f, g) {
+			gt_print_function_libusbg(f, opts);
+		}
+
+		/* TODO print config */
+	}
 
 	return 0;
 }
