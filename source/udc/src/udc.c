@@ -17,12 +17,12 @@
 #include <stdio.h>
 
 #include "udc.h"
+#include "backend.h"
 
-static int udc_func(void *data)
-{
-	printf("gt udc called successfully. Not implemented yet.\n");
-	return 0;
-}
+#define GET_EXECUTABLE(func) \
+	(backend_ctx.backend->udc->func ? \
+	 backend_ctx.backend->udc->func : \
+	 gt_udc_backend_not_implemented.func)
 
 int udc_help_func(void *data)
 {
@@ -35,7 +35,7 @@ void udc_parse(const Command *cmd, int argc, char **argv,
 {
 	if(argc == 0)
 		// udc should be run without args
-		executable_command_set(exec, udc_func, data, NULL);
+		executable_command_set(exec, GET_EXECUTABLE(udc), data, NULL);
 	else
 		// Wrong syntax for udc command, let's print help
 		executable_command_set(exec, cmd->printHelp, data, NULL);

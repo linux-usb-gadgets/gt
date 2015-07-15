@@ -19,6 +19,10 @@
 
 #include "command.h"
 
+struct gt_udc_backend {
+	int (*udc)(void *);
+};
+
 /**
  * @brief Help function which should be used if invalid
  * syntax for udc was entered.
@@ -37,5 +41,9 @@ int udc_help_func(void *data);
  */
 void udc_parse(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void * data);
+
+extern struct gt_udc_backend gt_udc_backend_libusbg;
+extern struct gt_udc_backend gt_udc_backend_gadgetd;
+extern struct gt_udc_backend gt_udc_backend_not_implemented;
 
 #endif //__GADGET_TOOL_UDC_UDC_PARSE_H__
