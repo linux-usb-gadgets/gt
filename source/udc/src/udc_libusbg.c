@@ -14,10 +14,30 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
+#include <usbg/usbg.h>
 
+#include "backend.h"
 #include "udc.h"
-#include <stdlib.h>
+
+static int udc_func(void *data)
+{
+	usbg_udc *u;
+	const char *name;
+
+	usbg_for_each_udc(u, backend_ctx.libusbg_state) {
+		name = usbg_get_udc_name(u);
+		if (name == NULL) {
+			fprintf(stderr, "Error getting udc name\n");
+			return -1;
+		}
+
+		puts(name);
+	}
+
+	return 0;
+}
 
 struct gt_udc_backend gt_udc_backend_libusbg = {
-	.udc = NULL,
+	.udc = udc_func,
 };
