@@ -1,0 +1,385 @@
+# Get $1-th word, not counting options
+_gt_get_word()
+{
+	i=-1
+
+	for c in ${!COMP_WORDS[@]}; do
+		if [[ ${COMP_WORDS[c]} != -* ]]; then
+			((i++))
+		fi
+
+		if [ $i -eq $1 ]; then
+			echo ${COMP_WORDS[c]}
+			break
+		fi
+	done
+}
+
+# Count words ignoring options
+_gt_get_cword()
+{
+	i=$COMP_CWORD
+
+	for c in ${COMP_WORDS[@]}; do
+		if [[ $c == -* ]]; then
+			((i--))
+		fi
+	done
+
+	echo $i
+}
+
+# Get gadget list
+_gt_get_gadgets()
+{
+	${COMP_WORDS[0]} gadget --quiet
+}
+
+_gt_gadget_attributes()
+{
+	echo "bcdUSB
+	      bDeviceClass
+	      bDeviceSubClass
+	      bDeviceProtocol
+	      bMaxPacketSize0
+	      idVendor
+	      idProduct
+	      bcdDevice"
+}
+
+# Add '=' character to the end of each attribute
+_gt_attr_to_set()
+{
+	sed -e 's/\b[[:graph:]]\+\b/&=/g'
+}
+
+_gt_list_func_types()
+{
+	${COMP_WORDS[0]} func list-types --quiet
+}
+
+_gt_opts()
+{
+	case ${COMP_WORDS[COMP_CWORD]} in
+		-*)
+			echo $1
+			;;
+	esac
+}
+
+# Get completions for function
+# $1 index of word with gadget name
+# $2 index of word with function type
+# $3 index of word with function instance
+_gt_comp_function()
+{
+	count=$(_gt_get_cword)
+	case $count in
+		$1)
+			_gt_get_gadgets
+			;;
+		$2)
+			${COMP_WORDS[0]} \
+				func show $(_gt_get_word $1) --type
+			;;
+		$3)
+			${COMP_WORDS[0]} \
+				func show $(_gt_get_word $1) \
+				$(_gt_get_word $2) \
+				--instance
+			;;
+	esac
+}
+
+_gt_func()
+{
+	case ${COMP_WORDS[2]} in
+		create)
+			if [ $(_gt_get_cword) -eq 3 ]; then
+				commands=$(_gt_get_gadgets)
+			elif [ $(_gt_get_cword) -eq 4 ]; then
+				commands=$(_gt_list_func_types)
+			fi
+			;;
+		rm)
+			commands=$(_gt_comp_function 3 4 5)
+
+			commands="$commands $(_gt_opts "
+				--recursive
+				--force
+				--help
+			")"
+			;;
+		show)
+			commands=$(_gt_comp_function 3 4 5)
+
+			commands="$commands $(_gt_opts "
+				--verbose
+				--instance
+				--type
+				--help
+			")"
+
+			;;
+		get)
+			;;
+		set)
+			;;
+		list-types)
+			;;
+		load)
+			;;
+		save)
+			;;
+		template)
+			;;
+	esac
+
+	if [ $COMP_CWORD -le 2 ]; then
+		commands="create
+			rm
+			show
+			get
+			set
+			list-types
+			load
+			save
+			template"
+	fi
+
+	echo $commands
+}
+
+_gt_config()
+{
+	cword=$(_gt_get_cword)
+	case ${COMP_WORDS[2]} in
+		create)
+			commands=""
+
+			commands="$commands $(_gt_opts "
+				--force
+				--help
+			")"
+		;;
+		add)
+			case $cword in
+				3 | 6 | 7)
+					commands=$(_gt_comp_function 3 6 7)
+					;;
+				4)
+					commands="" # Config labels
+					;;
+				5)
+					comands="" # Config ids
+					;;
+			esac
+
+			commands="$commands $(_gt_opts "
+				--help
+			")"
+		;;
+		del)
+		;;
+		rm)
+		;;
+		get)
+		;;
+		set)
+		;;
+		config)
+		;;
+		template)
+		;;
+		load)
+		;;
+		save)
+		;;
+	esac
+
+	if [ $COMP_CWORD -le 2 ]; then
+		commands="create
+			add
+			del
+			rm
+			get
+			set
+			config
+			template
+			load
+			save"
+	fi
+
+	echo $commands
+}
+# Set proper options depending on previous words
+_gt_compopts()
+{
+	compopt -o nospace
+
+	if [[ ${COMP_WORDS[COMP_CWORD-1]} == = ]]; then
+		word=${COMP_WORDS[COMP_CWORD-2]}
+	else
+		word=${COMP_WORDS[COMP_CWORD-1]}
+	fi
+
+	case $word in
+		--file*)
+			compopt -o default
+			;;
+		--path*)
+			compopt -o dirnames
+			;;
+	esac
+}
+
+_gt()
+{
+	local cur prev commands
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	case ${COMP_WORDS[1]} in
+		func)
+			commands=$(_gt_func)
+			;;
+		config)
+			commands=$(_gt_config)
+			;;
+		udc)
+			commands=""
+			;;
+		gadget)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--verbose
+				--recursive
+				--quiet
+				--help
+			")"
+			;;
+		create)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=""
+			else
+				commands=$(_gt_gadget_attributes | _gt_attr_to_set)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--help
+				--force
+			")"
+			;;
+		rm)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--force
+				--recursive
+				--help
+			")"
+			;;
+		get)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			else
+				commands=$(_gt_gadget_attributes)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--help
+			")"
+			;;
+		set)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			else
+				commands=$(_gt_gadget_attributes | _gt_attr_to_set)
+			fi
+			commands="$commands $(_gt_opts "
+				--help
+			")"
+
+			;;
+		enable)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--help
+			")"
+			;;
+		disable)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--help
+			")"
+			;;
+		template)
+			commands="get set rm"
+			;;
+		load)
+			commands=$(${COMP_WORDS[0]} template)
+
+			commands="$commands $(_gt_opts "
+				--off
+				--file=
+				--stdin
+				--path=
+				--help
+			")"
+			;;
+		save)
+			if [ $(_gt_get_cword) -le 2 ]; then
+				commands=$(_gt_get_gadgets)
+			fi
+
+			commands="$commands $(_gt_opts "
+				--force
+				--file=
+				--stdout
+				--path=
+				--help
+			")"
+			;;
+	esac
+
+	if [ $COMP_CWORD -le 1 ]; then
+		commands="func
+			config
+			udc
+			gadget
+			create
+			rm
+			get
+			set
+			enable
+			disable
+			template
+			load
+			save"
+	fi
+
+	_gt_compopts
+
+	COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
+
+	# Add spaces to non-settings elements
+	for c in ${!COMPREPLY[@]}; do
+		if [[ ${COMPREPLY[c]} != *= ]]; then
+			COMPREPLY[c]="${COMPREPLY[c]} "
+		fi
+	done
+}
+
+complete -F _gt gt

@@ -34,3 +34,4 @@ make
 %defattr(-,root,root)
 /usr/local/bin/gt
 /etc/gt/gt.conf
+/etc/bash_completion.d/gt
