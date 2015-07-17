@@ -1,0 +1,160 @@
+GT(1)
+=====
+:doctype: manpage
+
+NAME
+----
+gt - configfs-based usb gadgets management tool
+
+
+SYNOPSIS
+-------
+*gt* <ommand> [options] ...
+
+*gadgetctl* <command> [options] ...
+
+DESCRIPTION
+-----------
+This tool can be used to create and configure usb gadgets using configfs.
+It can be executed in two different ways:
+
+* *gt* operates directly on configfs, which requires root privileges.
+* *gadgetctl* use gadgetd daemon to configure gadgets.
+
+Both commands provide the same syntax described below.
+
+COMMANDS
+--------
+Gadget tool provide several subcommands for managing gadgets. Most of them support
+optional arguments (starting with -).
+
+*udc*::
+	Shows the list of available udc
+
+*settings set* <variable>=<value>::
+	Sets the variable to a given value
+
+*settings get* [variable]::
+	Get's the value of all variable or variables passed as parameters
+
+*settings append* <variable> <value>::
+	Used for variables which contains a list. Appends the value to the list
+	epresented by variable
+
+*settings detach* <variable> <value>::
+	Used for variables which contains a list. Removes a value from list
+	represented by variable.
+
+*create* <gadget name> [attr=val]::
+	Creates a gadget with a specified name and sets its attributes to given
+	values.
+	Options:
+	-f --force ::: override the gadget if gadget with this name already exist
+
+*rm* <gadget name>::
+	Removes a gadget with given name. Gadget should not contain any configuration
+	or function, unless -r --recursive option is used.
+	Options:
+	-f --force ::: disable gadget before removing if gadget is enabled
+	-r --recursive ::: recursively removes all configurations and functions if any
+
+*get* <gadget name> [attr]::
+	Prints to standard output names of attributes and their current values. If
+	attr has not been given, all attributes are printed.
+
+*set* <gadget_name> <attr>=<val>::
+	Sets given attributes to new values. If an attribute should be created the
+	name should be completed with / and it's value set to 1, or to 0
+	if attr should be removed. For example gt set gadget1 strings/0x415/=1 creates
+	a directory 0x415 in strings directory, and then you can simply set values of
+	attributes below that directory - gt set gadget1
+	strings/0x415/manufacturer="Polski producent"
+
+*enable*::
+	Enables gadget on udc. If gadget has not been specified and only one exist
+	than one is taken. If more than one gadget exist including default one the
+	default is taken, else command fails due to ambiguous gadget. That same rule is
+	used while choosing an udc.
+
+*disable*::
+	Disable gadget. If gadget has been specified it is disabled, otherwise: if
+	only one gadget exist it is used, if more than one gadget exist including
+	default gadget, the default is disabled else error due to ambiguous gadget name
+	unless -u or --udc option was used.
+	Options:
+	-u=<udc> --udc=<udc> ::: disables a gadget which is active at given udc
+
+*gadget*::
+	If no gadget specified shows the list of gadgets, otherwise shows the gadget
+	name, list of configurations and list of functions.
+	Options:
+	-v --verbose ::: shows not only the name of gadget but also it's attributes
+	-r --recursive ::: shows the details about each function and configuration
+	attributes
+
+*gt template* [name]::
+	If no name specified shows the list of templates, otherwise shows the template
+	name, list of configurations and list of functions.
+	Options:
+	-v --verbose - shows not only the name of gadget but also it's attributes
+	-r --recursive - shows the details about each function and configuration
+	attributes
+
+*gt load* <name> [gadget name]::
+	Loads the gadget settings related to name, creates and enables the created
+	gadget.
+	Options:
+	-o --off Don't enable gadget after load
+	--file=<gadget_file> loads gadget from file instead of from paths
+	--stdin loads gadget from stdin
+	--path=<path> loads gadget located in some path instead of from standard paths
+
+*gt save* <gadget> [name] [template_attr=val]::
+	Stores the gadget configuration in system templates as name. If name not
+	specified gadget's name is used. Sets the template attributes to given values.
+	Options:
+	-f --force override gadget template if exist
+	--file=<gadget_file> stores in file
+	--stdout prints the configuration to standard output
+	--path=<path> stores gadget in given path instead of default
+
+*gt template get* <name> [template_attr]::
+	Prints to standard output names of template attributes and their current
+	values. If attr has not been given, all attributes are printed.
+
+*gt template set* <name> <attr>=<val>::
+	Sets given attributes to new values.
+
+*gt template rm* <name>::
+	Removes gadget template with specified name.
+
+EXAMPLE
+-------
+To create simple ethernet gadget execute following commands:
+
+	$ gt create g1
+	$ gt func create g1 ecm usb0
+	$ gt config create g1 c 1
+	$ gt config add g1 c 1 ecm usb0
+
+You would want to set gadget attributes, e.g. vendor id and procuct id:
+
+	$ gt set g1 idVendor=0x1d6b idProduct=0x0104
+
+When your gadget is ready, you can enable it:
+
+	$ gt enable g1
+
+To save your configuration to file run:
+
+	$ gt save g1 ether.scheme
+
+To remove gadget and its configurations and functions run:
+
+	$ gt rm -rf g1
+
+When you want to reload saved gadget, simply run:
+
+	$ gt load ether.scheme g1
+
+When you have gadgetd daemon running, you can replace *gt* with *gadgetctl*.
