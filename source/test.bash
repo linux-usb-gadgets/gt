@@ -3,7 +3,7 @@
 
 CHECK_MEM=0;
 MEMCHECK_ERROR=2;
-VALGRIND="valgrind -q --leak-check=full --error-exitcode=$MEMCHECK_ERROR";
+VALGRIND="valgrind -q --error-exitcode=$MEMCHECK_ERROR";
 
 function usage {
 	echo "Usage: $0 [-hv] [executable]";
@@ -40,9 +40,9 @@ then
 		echo "$1: Executable file not found. Aborted.";
 		exit 1;
 	fi
-elif [ -f "gt" ]
+elif [ -f "gt-parse-test" ]
 then
-	GT="./gt";
+	GT="./gt-parse-test";
 else
 	echo "Executable file not specified. Aborted."
 	exit 1;
@@ -67,7 +67,7 @@ function print_success {
 }
 
 function expect_success {
-	$EXECUTABLE $1 > test.out;
+	$EXECUTABLE $1 > test.out 2>/dev/null;
 	ret=$?;
 	if [[ $res -eq $MEMCHECK_ERROR ]]
 	then
@@ -109,9 +109,9 @@ function expect_failure {
 expect_success "settings set default-udc=udc1" "default-udc=udc1, ";
 expect_success "settings set default-udc=udc1 default-template-path=path1"\
 	"default-udc=udc1, default-template-path=path1, ";
-expect_success "settings get config-fs-path" "config-fs-path, ";
-expect_success "settings get config-fs-path default-udc"\
-	"config-fs-path, default-udc,";
+expect_success "settings get configfs-path" "configfs-path, ";
+expect_success "settings get configfs-path default-udc"\
+	"configfs-path, default-udc,";
 expect_success "settings get" "";
 expect_success "settings append lookup-path value" "var=lookup-path, val=value";
 expect_success "settings detach lookup-path value" "var=lookup-path, val=value";
@@ -127,9 +127,9 @@ expect_failure "settings detach lookup-path";
 
 expect_success "create gadget1" "name=gadget1, force=0";
 expect_success "create -f gadget2" "name=gadget2, force=1";
-expect_success "create -f gadget2 attr=val" "name=gadget2, force=1, attr=val";
-expect_success "create --force gadget3 attr1=val1 attr2=val2"\
-	"name=gadget3, force=1, attr1=val1, attr2=val2";
+expect_success "create -f gadget2 idVendor=1" "name=gadget2, force=1, idVendor=1";
+expect_success "create --force gadget3 idVendor=1 idProduct=2"\
+	"name=gadget3, force=1, idVendor=1, idProduct=2";
 expect_success "rm gadget1" "name=gadget1, force=0, recursive=0";
 expect_success "rm -r gadget2" "name=gadget2, force=0, recursive=1";
 expect_success "rm -f gadget3" "name=gadget3, force=1, recursive=0";
@@ -142,26 +142,25 @@ expect_failure "rm -rf gadget gadget";
 expect_failure "rm";
 
 expect_success "get gadget1" "name=gadget1, attrs=";
-expect_success "get gadget1 attr" "name=gadget1, attrs=attr,";
-expect_success "get gadget2 attr1 attr2 attr3 attr4" \
-	"name=gadget2, attrs=attr1, attr2, attr3, attr4,";
-expect_success "set gadget attr=val" "name=gadget, attr=val";
-expect_success "set gadget attr1=val1 attr2=val2"\
-	"name=gadget, attr1=val1, attr2=val2";
+expect_success "get gadget1 idVendor" "name=gadget1, attrs=idVendor,";
+expect_success "get gadget2 idVendor idProduct" \
+	"name=gadget2, attrs=idVendor, idProduct,";
+expect_success "set gadget idVendor=1" "name=gadget, idVendor=1";
+expect_success "set gadget idVendor=1 idProduct=2"\
+	"name=gadget, idVendor=1, idProduct=2";
 
 expect_failure "get";
 expect_failure "set gadget";
 expect_failure "set gadget attr equals val";
 expect_failure "set";
 
-expect_success "enable" "";
-expect_success "enable --gadget=gadget --udc=udc" "gadget=gadget, udc=udc";
-expect_success "enable --gadget=gadget1" "gadget=gadget1,";
-expect_success "enable --udc=udc1" "udc=udc1";
+expect_success "enable gadget udc" "gadget=gadget, udc=udc";
+expect_success "enable gadget1" "gadget=gadget1,";
 expect_success "disable" "";
 expect_success "disable gadget1" "gadget=gadget1,";
 expect_success "disable --udc=udc1" "udc=udc1";
 
+expect_failure "enable";
 expect_failure "disable gadget1 --udc=udc";
 expect_failure "enable -f";
 expect_failure "enable -v";
@@ -189,9 +188,9 @@ expect_success "load name gadget1 --path=path"\
 	"name=name, gadget=gadget1, path=path, off=0, stdin=0";
 expect_success "save gadget1 name" "gadget=gadget1, name=name, force=0, stdout=0";
 expect_success "save gadget1 --file=file"\
-	"gadget=gadget1, file=file, force=0, stdout=0";
+	"gadget=gadget1, name=gadget1, file=file, force=0, stdout=0";
 expect_success "save gadget1 --stdout attr=val"\
-	"gadget=gadget1, force=0, stdout=1, attr=val";
+	"gadget=gadget1, name=gadget1, force=0, stdout=1, attr=val";
 expect_success "save gadget1 name --path=path"\
 	"gadget=gadget1, name=name, path=path, force=0, stdout=0";
 expect_success "save gadget1 name -f"\
@@ -232,12 +231,12 @@ expect_failure "template set name attr1=val1 attr2"
 expect_failure "template rm"
 expect_failure "template rm name1 name2"
 
-expect_success "config create gadget1 config1"\
-	"gadget=gadget1, config=config1, force=0";
-expect_success "config create gadget1 config1 attr=val"\
-	"gadget=gadget1, config=config1, force=0, attr=val";
-expect_success "config create -f gadget1 config1"\
-	"gadget=gadget1, config=config1, force=1";
+expect_success "config create gadget1 config 1"\
+	"gadget=gadget1, cfg_label=config, cfg_id=1, force=0";
+expect_success "config create gadget1 config 1 attr=val"\
+	"gadget=gadget1, cfg_label=config, cfg_id=1, force=0, attr=val";
+expect_success "config create -f gadget1 config 1"\
+	"gadget=gadget1, cfg_label=config, cfg_id=1, force=1";
 expect_success "config rm gadget config"\
 	"gadget=gadget, config=config, force=0, recursive=0";
 expect_success "config rm -rf gadget config"\
@@ -274,25 +273,21 @@ expect_success "config -r gadget1 config1"\
 expect_failure "config gadget1 config1 func1";
 expect_failure "config gadget1 -f";
 
-expect_success "config add gadget1 conf1 type name"\
-	"gadget=gadget1, conf=conf1, type=type, instance=name";
-expect_success "config add gadget1 conf1 type.name"\
-	"gadget=gadget1, conf=conf1, type=type, instance=name";
-expect_success "config del gadget1 conf1 type name"\
-	"gadget=gadget1, conf=conf1, type=type, instance=name";
-expect_success "config del gadget1 conf1 type.name"\
-	"gadget=gadget1, conf=conf1, type=type, instance=name";
+expect_success "config add gadget1 conf 1 acm name"\
+	"gadget=gadget1, cfg_label=conf, cfg_id=1, type=acm, instance=name";
+expect_success "config del gadget1 conf 1 acm name"\
+	"gadget=gadget1, cfg_label=conf, cfg_id=1, type=acm, instance=name";
 
 expect_failure "config add gadget1 conf1";
 expect_failure "config add gadget1";
 expect_failure "config add gadget1 conf1 func";
 expect_failure "config add";
-expect_failure "config add gadget1 conf type name more";
+expect_failure "config add gadget1 conf acm name more";
 expect_failure "config del gadget1 conf1";
 expect_failure "config del gadget1";
 expect_failure "config del gadget1 conf1 func";
 expect_failure "config del";
-expect_failure "config del gadget1 conf type name more";
+expect_failure "config del gadget1 conf acm name more";
 
 expect_success "config template"\
 	"verbose=0, recursive=0";
@@ -361,80 +356,75 @@ expect_failure "config save gadget1 conf --path=p --stdout";
 expect_failure "config save gadget1 conf --path";
 expect_failure "config save gadget1 conf --file";
 
-expect_success "func create gadget type name"\
-	"gadget=gadget, type=type, name=name, force=0";
-expect_success "func create gadget type.name"\
-	"gadget=gadget, type=type, name=name, force=0";
-expect_success "func create -f gadget type name"\
-	"gadget=gadget, type=type, name=name, force=1";
-expect_success "func create -f gadget type.name"\
-	"gadget=gadget, type=type, name=name, force=1";
-expect_success "func create gadget type1.name1 attr=val"\
-	"gadget=gadget, type=type1, name=name1, force=0, attr=val";
-expect_success "func create gadget type1.name1 attr1=val1 attr2=val2"\
-	"gadget=gadget, type=type1, name=name1, force=0, attr1=val1, attr2=val2";
+expect_success "func create gadget acm name"\
+	"gadget=gadget, type=acm, name=name, force=0";
+expect_success "func create gadget acm name"\
+	"gadget=gadget, type=acm, name=name, force=0";
+expect_success "func create -f gadget acm name"\
+	"gadget=gadget, type=acm, name=name, force=1";
+expect_success "func create -f gadget acm name"\
+	"gadget=gadget, type=acm, name=name, force=1";
+expect_success "func create gadget acm name1 attr=val"\
+	"gadget=gadget, type=acm, name=name1, force=0, attr=val";
+expect_success "func create gadget acm name1 attr1=val1 attr2=val2"\
+	"gadget=gadget, type=acm, name=name1, force=0, attr1=val1, attr2=val2";
 
-expect_failure "func create gadget type.name -v";
-expect_failure "func create gadget type.name -r";
+expect_failure "func create gadget acm name -v";
+expect_failure "func create gadget acm name -r";
 expect_failure "func create gadget";
-expect_failure "func create gadget type name attrval";
-expect_failure "func create gadget typename";
+expect_failure "func create gadget acm name attrval";
+expect_failure "func create gadget acmname";
 
-expect_success "func rm gadget t.n"\
-	"gadget=gadget, type=t, name=n, recursive=0, force=0";
-expect_success "func rm gadget1 t n"\
-	"gadget=gadget1, type=t, name=n, recursive=0, force=0";
-expect_success "func rm -r gadget1 type1.name1"\
-	"gadget=gadget1, type=type1, name=name1, recursive=1, force=0";
-expect_success "func rm -f gadget2 type2.name2"\
-	"gadget=gadget2, type=type2, name=name2, recursive=0, force=1";
-expect_success "func rm -rf gadget3 type3 name3"\
-	"gadget=gadget3, type=type3, name=name3, recursive=1, force=1";
+expect_success "func rm gadget acm name"\
+	"gadget=gadget, type=acm, instance=name, recursive=0, force=0";
+expect_success "func rm gadget1 acm name"\
+	"gadget=gadget1, type=acm, instance=name, recursive=0, force=0";
+expect_success "func rm -r gadget1 acm name1"\
+	"gadget=gadget1, type=acm, instance=name1, recursive=1, force=0";
+expect_success "func rm -f gadget2 acm name2"\
+	"gadget=gadget2, type=acm, instance=name2, recursive=0, force=1";
+expect_success "func rm -rf gadget3 acm name3"\
+	"gadget=gadget3, type=acm, instance=name3, recursive=1, force=1";
 
 expect_failure "func rm";
 expect_failure "func rm gadget1";
 expect_failure "func rm gadget1 function";
-expect_failure "func rm gadget1 type name attr=val";
-expect_failure "func rm gadget1 -v type.name";
-expect_failure "func rm gadget1 -o type.name";
+expect_failure "func rm gadget1 acm name attr=val";
+expect_failure "func rm gadget1 -v acm name";
+expect_failure "func rm gadget1 -o acm name";
 
-expect_success "func get gadget1 type1.name1"\
-	"gadget=gadget1, type=type1, name=name1, attrs=";
-expect_success "func get gadget1 type1.name1 attr1 attr2"\
-	"gadget=gadget1, type=type1, name=name1, attrs=attr1,attr2,";
-expect_success "func get gadget1 type1 name1 attr"\
-	"gadget=gadget1, type=type1, name=name1, attrs=attr,";
+expect_success "func get gadget1 acm name1"\
+	"gadget=gadget1, type=acm, name=name1, attrs=";
+expect_success "func get gadget1 acm name1 attr1 attr2"\
+	"gadget=gadget1, type=acm, name=name1, attrs=attr1,attr2,";
+expect_success "func get gadget1 acm name1 attr"\
+	"gadget=gadget1, type=acm, name=name1, attrs=attr,";
 
 expect_failure "func get gadget1";
 expect_failure "func get";
 expect_failure "func get gadget function";
 
-expect_success "func set gadget1 type1 name1"\
-	"gadget=gadget1, type=type1, name=name1";
-expect_success "func set gadget1 type1.name1"\
-	"gadget=gadget1, type=type1, name=name1";
-expect_success "func set gadget1 type1.name1 attr1=val1 attr2=val2"\
-	"gadget=gadget1, type=type1, name=name1, attr1=val1, attr2=val2";
-expect_success "func set gadget1 type1 name1 attr=val"\
-	"gadget=gadget1, type=type1, name=name1, attr=val";
+expect_success "func set gadget1 acm name1"\
+	"gadget=gadget1, type=acm, name=name1";
+expect_success "func set gadget1 acm name1"\
+	"gadget=gadget1, type=acm, name=name1";
+expect_success "func set gadget1 acm name1 attr1=val1 attr2=val2"\
+	"gadget=gadget1, type=acm, name=name1, attr1=val1, attr2=val2";
+expect_success "func set gadget1 acm name1 attr=val"\
+	"gadget=gadget1, type=acm, name=name1, attr=val";
 
 expect_failure "func set";
 expect_failure "func set gadget1";
 expect_failure "func set gadget1 function":
-expect_failure "func set gadget1 type name attr";
+expect_failure "func set gadget1 acm name attr";
 
-expect_success "func gadget1" "gadget=gadget1, verbose=0";
-expect_success "func gadget1 type name"\
-	"gadget=gadget1, type=type, name=name, verbose=0";
-expect_success "func gadget1 type.name"\
-	"gadget=gadget1, type=type, name=name, verbose=0";
-expect_success "func -v gadget1" "gadget=gadget1, verbose=1";
-expect_success "func --verbose gadget1 type name"\
-	"gadget=gadget1, type=type, name=name, verbose=1";
-expect_success "func gadget1 -v type.name"\
-	"gadget=gadget1, type=type, name=name, verbose=1";
+expect_success "func show gadget1" "gadget=gadget1, verbose=0";
+expect_success "func show gadget1 acm name"\
+	"gadget=gadget1, type=acm, instance=name, verbose=0";
+expect_success "func show -v gadget1" "gadget=gadget1, verbose=1";
+expect_success "func --verbose gadget1 acm name"\
+	"gadget=gadget1, type=acm, instance=name, verbose=1";
 
-expect_failure "func gadget1 function";
 expect_failure "func gadget2 -f";
 expect_failure "func gadget3 -r";
 expect_failure "func gadget4 -o";
