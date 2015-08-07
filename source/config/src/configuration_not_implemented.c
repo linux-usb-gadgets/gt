@@ -21,6 +21,28 @@
 #include "parser.h"
 #include "backend.h"
 
+static int create_func(void *data)
+{
+	struct gt_config_create_data *dt;
+	struct gt_setting *ptr;
+
+	dt = (struct gt_config_create_data *)data;
+
+	printf("Config create called successfully. Not implemented.\n");
+	printf("gadget = %s, cfg_label = %s, cfg_id = %d, force = %d",
+		dt->gadget, dt->config_label, dt->config_id, !!(dt->opts & GT_FORCE));
+
+	ptr = dt->attrs;
+	while (ptr->variable) {
+		printf(", %s = %s", ptr->variable, ptr->value);
+		ptr++;
+	}
+
+	putchar('\n');
+
+	return 0;
+}
+
 static int rm_func(void *data)
 {
 	struct gt_config_rm_data *dt;
@@ -97,6 +119,18 @@ static int del_func(void *data)
 	return 0;
 }
 
+static int add_func(void *data)
+{
+	struct gt_config_add_del_data *dt;
+
+	dt = (struct gt_config_add_del_data *)data;
+	printf("Config add called successfully. Not implemented.\n");
+	printf("gadget = %s, cfg_label = %s, cfg_id = %d, type = %s, instance = %s\n",
+			dt->gadget, dt->config_label, dt->config_id, dt->type, dt->instance);
+
+	return 0;
+}
+
 static int template_func(void *data)
 {
 	struct gt_config_template_data *dt;
@@ -148,11 +182,12 @@ static int template_set_func(void *data)
 
 static int template_rm_func(void *data)
 {
-	const char *dt;
+	struct gt_config_template_rm_data *dt;
 
-	dt = (const char *)data;
+	dt = (struct gt_config_template_rm_data *)data;
+
 	printf("Config template rm called successfully. Not implemented.\n");
-	printf("name = %s\n", dt);
+	printf("name = %s\n", dt->name);
 	return 0;
 }
 
@@ -212,11 +247,13 @@ static int save_func(void *data)
 }
 
 struct gt_config_backend gt_config_backend_not_implemented = {
+	.create = create_func,
 	.rm = rm_func,
 	.get = get_func,
 	.set = set_func,
 	.config = config_func,
 	.del = del_func,
+	.add = add_func,
 	.template_default = template_func,
 	.template_get = template_get_func,
 	.template_set = template_set_func,
