@@ -44,6 +44,13 @@ struct gt_backend gt_backend_gadgetd = {
 	.udc = &gt_udc_backend_gadgetd,
 };
 
+struct gt_backend gt_backend_not_implemented = {
+	.function = &gt_function_backend_not_implemented,
+	.gadget = &gt_gadget_backend_not_implemented,
+	.config = &gt_config_backend_not_implemented,
+	.udc = &gt_udc_backend_not_implemented,
+};
+
 int gt_backend_init(const char *program_name, enum gt_option_flags flags)
 {
 	enum gt_backend_type backend_type;
@@ -53,8 +60,15 @@ int gt_backend_init(const char *program_name, enum gt_option_flags flags)
 		backend_type = GT_BACKEND_LIBUSBG;
 	else if (strcmp(program_name, "gadgetctl") == 0)
 		backend_type = GT_BACKEND_GADGETD;
+	else if (strcmp(program_name, "gt-parse-test") == 0)
+		backend_type = GT_BACKEND_NOT_IMPLEMENTED;
 	else
 		backend_type = GT_BACKEND_AUTO;
+
+	if (backend_type == GT_BACKEND_NOT_IMPLEMENTED) {
+		backend_ctx.backend = &gt_backend_not_implemented;
+		return 0;
+	}
 
 	if (backend_type == GT_BACKEND_GADGETD || backend_type == GT_BACKEND_AUTO) {
 		GDBusConnection *conn;

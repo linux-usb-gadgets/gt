@@ -40,6 +40,7 @@ enum gt_backend_type {
 	GT_BACKEND_AUTO = 0,
 	GT_BACKEND_GADGETD,
 	GT_BACKEND_LIBUSBG,
+	GT_BACKEND_NOT_IMPLEMENTED,
 };
 
 struct gt_backend {
@@ -62,6 +63,7 @@ struct gt_backend_ctx {
 
 extern struct gt_backend gt_backend_libusbg;
 extern struct gt_backend gt_backend_gadgetd;
+extern struct gt_backend gt_backend_not_implemented;
 
 extern struct gt_backend_ctx backend_ctx;
 
