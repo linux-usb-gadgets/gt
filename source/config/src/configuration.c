@@ -59,7 +59,7 @@ static int gt_config_create_help(void *data)
 	       "-f, --force\tOverride config if config with given name already exists"
 	       "-h, --help\tPrint this help",
 	       program_name);
-	return 0;
+	return -1;
 }
 
 static void gt_parse_config_create(const Command *cmd, int argc, char **argv,
@@ -283,7 +283,7 @@ static int gt_config_add_help(void *data)
 	       "Add function to specific configuration.\n"
 	       "\n",
 	       program_name);
-	return 0;
+	return -1;
 }
 
 static void gt_parse_config_add(const Command *cmd, int argc, char **argv,
@@ -560,7 +560,7 @@ static void gt_parse_config_template_rm(const Command *cmd, int argc,
 
 	dt->name = argv[ind++];
 	executable_command_set(exec, GET_EXECUTABLE(template_rm), (void *)dt,
-			NULL);
+			free);
 
 	return;
 out:

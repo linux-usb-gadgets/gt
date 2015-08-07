@@ -48,7 +48,7 @@ static int gt_func_create_help(void *data)
 	printf("usage: %s func create <gadget_name> <function_type> <function_name>\n"
 	       "Create new function of specified type (refer to `gt func list-types')\n",
 		program_name);
-	return 0;
+	return -1;
 }
 
 static void gt_parse_func_create(const Command *cmd, int argc,
@@ -163,7 +163,7 @@ static int gt_func_list_types_help(void *data)
 	       "  -q, --quiet\tPrint only list of types\n"
 	       "  -h, --help\tPrintf this help\n",
 		program_name);
-	return 0;
+	return -1;
 }
 
 static void gt_parse_func_list_types(const Command *cmd, int argc,
@@ -334,7 +334,7 @@ static int gt_func_func_help(void *data)
 	       "  save\n"
 	       "  template\n");
 
-	return 0;
+	return -1;
 }
 
 static int gt_func_show_help(void *data)
@@ -350,7 +350,7 @@ static int gt_func_show_help(void *data)
 	       "  --type\t\tShow only function types (cannot be used with  --instance)\n"
 	       "  -h, --help\tPrint this help\n");
 
-	return 0;
+	return -1;
 }
 
 static void gt_parse_func_show(const Command *cmd, int argc,

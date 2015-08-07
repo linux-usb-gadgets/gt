@@ -105,7 +105,7 @@ static int gt_gadget_create_help(void *data)
 	for (i = 0; i < GT_GADGET_STRS_COUNT; i++)
 		printf("  %s\n", gadget_strs[i].name);
 
-	return 0;
+	return -1;
 }
 
 static int gt_parse_gadget_attrs(struct gt_setting *attrs, int *attr_val, char **str_val)
@@ -787,10 +787,11 @@ static void gt_parse_gadget_template_rm(const Command *cmd, int argc,
 
 	dt->name = argv[ind++];
 	executable_command_set(exec, GET_EXECUTABLE(template_rm), (void *)dt,
-		NULL);
+		free);
 
 	return;
 out:
+	free(dt);
 	executable_command_set(exec, cmd->printHelp, data, NULL);
 }
 
@@ -835,7 +836,7 @@ static void gt_parse_gadget_template_set(const Command *cmd, int argc,
 	if (tmp < 0)
 		goto out;
 
-	executable_command_set(exec, GET_EXECUTABLE(set), (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_set), (void *)dt,
 		gt_gadget_template_set_destructor);
 
 	return;
@@ -889,7 +890,7 @@ static void gt_parse_gadget_template_get(const Command *cmd, int argc,
 	while (argv[ind])
 		dt->attr[i++] = argv[ind++];
 
-	executable_command_set(exec, GET_EXECUTABLE(get), (void *)dt,
+	executable_command_set(exec, GET_EXECUTABLE(template_get), (void *)dt,
 		gt_gadget_template_get_destructor);
 
 	return;
