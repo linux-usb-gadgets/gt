@@ -26,10 +26,27 @@
 static int create_func(void *data)
 {
 	struct gt_gadget_create_data *dt;
+	int i;
 
 	dt = (struct gt_gadget_create_data *)data;
 	printf("Gadget rm called successfully. Not implemented.\n");
 	printf("name = %s, force = %d", dt->name, !!(dt->opts & GT_FORCE));
+
+	for (i = 0; i < ARRAY_SIZE(dt->attr_val); ++i) {
+		if (dt->attr_val[i] >= 0) {
+			printf(", %s = %d", usbg_get_gadget_attr_str(i),
+					dt->attr_val[i]);
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(dt->str_val); ++i) {
+		if (dt->str_val[i] != NULL) {
+			printf(", %s = %s", gadget_strs[i].name,
+					dt->str_val[i]);
+		}
+	}
+
+	putchar('\n');
 
 	return 0;
 }
@@ -196,11 +213,11 @@ static int template_func(void *data)
 
 static int template_rm_func(void *data)
 {
-	char *dt;
+	struct gt_gadget_template_rm_data *dt;
 
-	dt = (char *)data;
+	dt = (struct gt_gadget_template_rm_data *)data;
 	printf("Gadget template rm called successfully. Not implemented.\n");
-	printf("name = %s\n", dt);
+	printf("name = %s\n", dt->name);
 	return 0;
 }
 
