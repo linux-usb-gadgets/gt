@@ -78,15 +78,15 @@ void gt_setting_list_cleanup(void *data);
  */
 enum gt_option_flags {
 	GT_FORCE = 1,
-	GT_RECURSIVE = 2,
-	GT_VERBOSE = 4,
-	GT_OFF = 8,
-	GT_STDIN = 16,
-	GT_STDOUT = 32,
-	GT_HELP = 64,
-	GT_QUIET = 128,
-	GT_INSTANCE = 256,
-	GT_TYPE = 512,
+	GT_RECURSIVE = 1 << 1,
+	GT_VERBOSE = 1 << 2,
+	GT_OFF = 1 << 3,
+	GT_STDIN = 1 << 4,
+	GT_STDOUT = 1 << 5,
+	GT_HELP = 1 << 6,
+	GT_QUIET = 1 << 7,
+	GT_INSTANCE = 1 << 8,
+	GT_TYPE = 1 << 9,
 };
 
 /**
