@@ -87,6 +87,8 @@ enum gt_option_flags {
 	GT_QUIET = 1 << 7,
 	GT_INSTANCE = 1 << 8,
 	GT_TYPE = 1 << 9,
+	GT_NAME = 1 << 10,
+	GT_ID = 1 << 11,
 };
 
 /**

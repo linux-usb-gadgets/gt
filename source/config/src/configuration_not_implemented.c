@@ -92,15 +92,17 @@ static int set_func(void *data)
 	return 0;
 }
 
-static int config_func(void *data)
+static int show_func(void *data)
 {
-	struct gt_config_config_data *dt;
+	struct gt_config_show_data *dt;
 
-	dt = (struct gt_config_config_data *)data;
+	dt = (struct gt_config_show_data *)data;
 	printf("Config config called successfully. Not implemented.\n");
 	printf("gadget = %s", dt->gadget);
-	if (dt->config)
-		printf(", config = %s", dt->config);
+	if (dt->config_label)
+		printf(", config_label = %s", dt->config_label);
+	if (dt->config_id)
+		printf(", config_id = %d", dt->config_id);
 	printf(", verbose = %d, recursive = %d\n",
 		!!(dt->opts & GT_VERBOSE), !!(dt->opts & GT_RECURSIVE));
 
@@ -251,7 +253,7 @@ struct gt_config_backend gt_config_backend_not_implemented = {
 	.rm = rm_func,
 	.get = get_func,
 	.set = set_func,
-	.config = config_func,
+	.show= show_func,
 	.del = del_func,
 	.add = add_func,
 	.template_default = template_func,

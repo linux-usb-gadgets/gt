@@ -91,6 +91,30 @@ _gt_comp_function()
 	esac
 }
 
+# Get completions for config
+# $1 index of word with gadget name
+# $2 index of word with config label
+# $3 index of word with config id
+_gt_comp_config()
+{
+	count=$(_gt_get_cword)
+	case $count in
+		$1)
+			_gt_get_gadgets
+			;;
+		$2)
+			${COMP_WORDS[0]} \
+				config show $(_gt_get_word $1) --name
+			;;
+		$3)
+			${COMP_WORDS[0]} \
+				config show $(_gt_get_word $1) \
+				$(_gt_get_word $2) \
+				--id
+			;;
+	esac
+}
+
 _gt_func()
 {
 	case ${COMP_WORDS[2]} in
@@ -157,6 +181,12 @@ _gt_config()
 		create)
 			commands=""
 
+			case $cword in
+				3)
+					commands=$(_gt_get_gadgets)
+					;;
+			esac
+
 			commands="$commands $(_gt_opts "
 				--force
 				--help
@@ -167,11 +197,8 @@ _gt_config()
 				3 | 6 | 7)
 					commands=$(_gt_comp_function 3 6 7)
 					;;
-				4)
-					commands="" # Config labels
-					;;
-				5)
-					comands="" # Config ids
+				3 | 4 | 5)
+					commands=$(_gt_comp_config 3 4 5)
 					;;
 			esac
 
@@ -187,7 +214,17 @@ _gt_config()
 		;;
 		set)
 		;;
-		config)
+		show)
+
+			commands=$(_gt_comp_config 3 4 5)
+
+			commands="$commands $(_gt_opts "
+				--recursive
+				--verbose
+				--name
+				--id
+				--help
+			")"
 		;;
 		template)
 		;;
@@ -204,7 +241,7 @@ _gt_config()
 			rm
 			get
 			set
-			config
+			show
 			template
 			load
 			save"

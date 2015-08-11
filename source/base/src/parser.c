@@ -191,6 +191,8 @@ int gt_get_options(int *optmask, int allowed_opts, int argc, char **argv)
 		{GT_QUIET, {"quiet", no_argument, 0, 'q'}},
 		{GT_INSTANCE, {"instance", no_argument, 0, 3}},
 		{GT_TYPE, {"type", no_argument, 0, 4}},
+		{GT_NAME, {"name", no_argument, 0, 5}},
+		{GT_ID, {"id", no_argument, 0, 6}},
 		{0, {NULL, 0, 0, 0}}
 	};
 
@@ -252,6 +254,12 @@ int gt_get_options(int *optmask, int allowed_opts, int argc, char **argv)
 			break;
 		case 4:
 			*optmask |= GT_TYPE;
+			break;
+		case 5:
+			*optmask |= GT_NAME;
+			break;
+		case 6:
+			*optmask |= GT_ID;
 			break;
 		default:
 			return -1;

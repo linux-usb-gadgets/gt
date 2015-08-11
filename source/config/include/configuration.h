@@ -17,6 +17,8 @@
 #ifndef __GADGET_TOOL_CONFIGURATION_CONFIGURATION_H__
 #define __GADGET_TOOL_CONFIGURATION_CONFIGURATION_H__
 
+#include <usbg/usbg.h>
+
 #include "command.h"
 
 /**
@@ -44,7 +46,7 @@ struct gt_config_backend {
 	/**
 	 * Show configs
 	 */
-	int (*config)(void *);
+	int (*show)(void *);
 	/**
 	 * Add a function to configuration
 	 */
@@ -107,9 +109,10 @@ struct gt_config_set_data {
 	int opts;
 };
 
-struct gt_config_config_data {
+struct gt_config_show_data {
 	const char *gadget;
-	const char *config;
+	int config_id;
+	const char *config_label;
 	int opts;
 };
 
@@ -180,6 +183,15 @@ const Command *gt_config_get_children(const Command *cmd);
  * @return -1 because invalid syntax has been provided
  */
 int gt_config_help(void *data);
+
+/**
+ * @brief Print given config
+ * @param[in] c Config to be printed
+ * @param[in] opts Mask from options (recognized flags are GT_VERBOSE,
+ * GT_RECURSIVE, GT_NAME, GT_ID).
+ * @return 0 on success, -1 otherwise
+ */
+int gt_print_config_libusbg(usbg_config *c, int opts);
 
 extern struct gt_config_backend gt_config_backend_gadgetd;
 extern struct gt_config_backend gt_config_backend_libusbg;

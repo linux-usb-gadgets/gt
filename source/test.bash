@@ -262,13 +262,13 @@ expect_failure "config set gadget1";
 expect_failure "config set gadget1 config1 func1";
 
 expect_success "config gadget1 config1"\
-	"gadget=gadget1, config=config1, verbose=0, recursive=0";
+	"gadget=gadget1, config_label=config1, verbose=0, recursive=0";
 expect_success "config gadget1" \
 	"gadget=gadget1, verbose=0, recursive=0";
 expect_success "config gadget1 -v"\
 	"gadget=gadget1, verbose=1, recursive=0";
-expect_success "config -r gadget1 config1"\
-	"gadget=gadget1, config=config1, verbose=0, recursive=1";
+expect_success "config -r gadget1 config 1"\
+	"gadget=gadget1, config_label=config, config_id=1, verbose=0, recursive=1";
 
 expect_failure "config gadget1 config1 func1";
 expect_failure "config gadget1 -f";

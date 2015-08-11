@@ -243,16 +243,49 @@ out:
 
 static int gt_config_config_help(void *data)
 {
-	printf("Config config help.\n");
+	printf("usage: %s config [command] ...\n"
+	       "Manipulate USB configurations\n\n",
+		program_name);
+
+	printf("Command:\n"
+	       "  show\n"
+	       "  create\n"
+	       "  rm\n"
+	       "  get\n"
+	       "  set\n"
+	       "  add\n"
+	       "  del\n"
+	       "  load\n"
+	       "  save\n"
+	       "  template\n");
+
 	return -1;
 }
 
-static void gt_parse_config_config(const Command *cmd, int argc, char **argv,
+static int gt_config_show_help(void *data)
+{
+	printf("usage: %s config show <gadget> [config_name] [config_id]\n"
+	       "Show configuration. If no name was specified, show all configurations.\n"
+	       "If only config name was specified show only configurations with this name\n",
+		program_name);
+
+	printf("Options:\n"
+	       "  -v, --verbose\tShow also attributes\n"
+	       "  -r, --recursive\tShow details about functions\n"
+	       "  --name\tShow only config names (cannot be used with --id\n"
+	       "  --id\t\tShow only config ids (cannot be used with  --name)\n"
+	       "  -h, --help\tPrint this help\n");
+
+	return -1;
+}
+
+static void gt_parse_config_show(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void *data)
 {
 	int ind;
-	struct gt_config_config_data *dt = NULL;
-	int avaible_opts = GT_VERBOSE | GT_RECURSIVE | GT_HELP;
+	struct gt_config_show_data *dt = NULL;
+	int avaible_opts = GT_VERBOSE | GT_RECURSIVE | GT_HELP | GT_NAME | GT_ID;
+	char *endptr = NULL;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
@@ -262,14 +295,20 @@ static void gt_parse_config_config(const Command *cmd, int argc, char **argv,
 	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
-	if (ind == argc || argc - ind > 2)
+	if (ind == argc || argc - ind > 3)
 		goto out;
 
 	dt->gadget = argv[ind++];
 	if (ind < argc)
-		dt->config = argv[ind++];
+		dt->config_label = argv[ind++];
 
-	executable_command_set(exec, GET_EXECUTABLE(config), (void *)dt, free);
+	if (ind < argc) {
+		dt->config_id = strtoul(argv[ind++], &endptr, 0);
+		if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
+			goto out;
+	}
+
+	executable_command_set(exec, GET_EXECUTABLE(show), (void *)dt, free);
 
 	return;
 out:
@@ -780,7 +819,9 @@ const Command *gt_config_get_children(const Command *cmd)
 			gt_config_load_help},
 		{"save", NEXT, gt_parse_config_save, NULL,
 			gt_config_save_help},
-		{NULL, AGAIN, gt_parse_config_config, NULL,
+		{"show", NEXT, gt_parse_config_show, NULL,
+			gt_config_show_help},
+		{NULL, AGAIN, gt_parse_config_show, NULL,
 			gt_config_config_help},
 		CMD_LIST_END
 	};
