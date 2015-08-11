@@ -209,6 +209,13 @@ _gt_config()
 		del)
 		;;
 		rm)
+			commands=$(_gt_comp_config 3 4 5)
+
+			commands="$commands $(_gt_opts "
+				--recursive
+				--force
+				--help
+			")"
 		;;
 		get)
 		;;

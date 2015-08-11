@@ -91,7 +91,8 @@ struct gt_config_create_data {
 
 struct gt_config_rm_data {
 	const char *gadget;
-	const char *config;
+	int config_id;
+	const char *config_label;
 	int opts;
 };
 

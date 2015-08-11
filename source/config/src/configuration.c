@@ -105,7 +105,14 @@ out:
 
 static int gt_config_rm_help(void *data)
 {
-	printf("Config rm help.\n");
+	printf("usage: %s config rm [options] <gadget_name> <cfg_label> <cfg_id>\n"
+	       "Remove configuration from gadget.\n"
+	       "\n"
+	       "Options:\n"
+	       "  -f, --force\tDisable gadget if it is enabled\n"
+	       "  -r, --recursive\tRecurively remove all function bindings from this config\n"
+	       "  -h, --help\tPrint this help\n",
+	       program_name);
 	return -1;
 }
 
@@ -115,6 +122,7 @@ static void gt_parse_config_rm(const Command *cmd, int argc, char **argv,
 	int ind;
 	struct gt_config_rm_data *dt;
 	int avaible_opts = GT_FORCE | GT_RECURSIVE | GT_HELP;
+	char *endptr = NULL;
 
 	dt = zalloc(sizeof(*dt));
 	if (dt == NULL)
@@ -123,11 +131,14 @@ static void gt_parse_config_rm(const Command *cmd, int argc, char **argv,
 	if (ind < 0 || dt->opts & GT_HELP)
 		goto out;
 
-	if (argc - ind != 2)
+	if (argc - ind != 3)
 		goto out;
 
 	dt->gadget = argv[ind++];
-	dt->config = argv[ind++];
+	dt->config_label = argv[ind++];
+	dt->config_id = strtoul(argv[ind++], &endptr, 0);
+	if (dt->config_id == 0 || errno || (endptr && *endptr != 0))
+			goto out;
 	executable_command_set(exec, GET_EXECUTABLE(rm), (void *)dt, free);
 
 	return;

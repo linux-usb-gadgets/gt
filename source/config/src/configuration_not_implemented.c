@@ -49,8 +49,8 @@ static int rm_func(void *data)
 
 	dt = (struct gt_config_rm_data *)data;
 	printf("Config rm called successfully. Not implemented.\n");
-	printf("gadget = %s, config = %s, force = %d, recursive = %d\n",
-		dt->gadget, dt->config, !!(dt->opts & GT_FORCE),
+	printf("gadget = %s, config_name = %s, config_id = %d, force = %d, recursive = %d\n",
+		dt->gadget, dt->config_label, dt->config_id, !!(dt->opts & GT_FORCE),
 		!!(dt->opts & GT_RECURSIVE));
 
 	return 0;

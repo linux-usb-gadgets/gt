@@ -213,10 +213,60 @@ static int show_func(void *data)
 
 }
 
+static int rm_func(void *data)
+{
+	struct gt_config_rm_data *dt;
+	usbg_gadget *g;
+	usbg_config *c;
+	usbg_udc *u;
+	int ret, opts = 0;
+
+	dt = (struct gt_config_rm_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+	if (g == NULL) {
+		fprintf(stderr, "Unable to find gadget %s\n",
+			dt->gadget);
+		return -1;
+	}
+
+	c = usbg_get_config(g, dt->config_id, dt->config_label);
+	if (c == NULL) {
+		fprintf(stderr, "Unable to find config: %s.%d\n",
+				dt->config_label,
+				dt->config_id);
+		return -1;
+	}
+
+	if (dt->opts & GT_RECURSIVE)
+		opts |= USBG_RM_RECURSE;
+
+	if (dt->opts & GT_FORCE) {
+		u = usbg_get_gadget_udc(g);
+		if (u != NULL) {
+			ret = usbg_disable_gadget(g);
+			if (ret < 0) {
+				fprintf(stderr, "Error disabling gadget: %s\n",
+						usbg_strerror(ret));
+				return -1;
+			}
+		}
+	}
+
+	ret = usbg_rm_config(c, opts);
+	if (ret < 0) {
+		fprintf(stderr, "Error removing config: %s\n",
+				usbg_strerror(ret));
+		return -1;
+	}
+
+	return ret;
+}
+
 struct gt_config_backend gt_config_backend_libusbg = {
 	.create = create_func,
 	.add = add_func,
-	.rm = NULL,
+	.rm = rm_func,
 	.get = NULL,
 	.set = NULL,
 	.show = show_func,

@@ -237,10 +237,10 @@ expect_success "config create gadget1 config 1 attr=val"\
 	"gadget=gadget1, cfg_label=config, cfg_id=1, force=0, attr=val";
 expect_success "config create -f gadget1 config 1"\
 	"gadget=gadget1, cfg_label=config, cfg_id=1, force=1";
-expect_success "config rm gadget config"\
-	"gadget=gadget, config=config, force=0, recursive=0";
-expect_success "config rm -rf gadget config"\
-	"gadget=gadget, config=config, force=1, recursive=1";
+expect_success "config rm gadget config 1"\
+	"gadget=gadget, config_name=config, config_id=1, force=0, recursive=0";
+expect_success "config rm -rf gadget config 1"\
+	"gadget=gadget, config_name=config, config_id=1, force=1, recursive=1";
 
 expect_failure "config create -r gadget1 config1";
 expect_failure "config create -f gadget1";
