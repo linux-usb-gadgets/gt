@@ -246,7 +246,7 @@ static int rm_func(void *data)
 
 	if (dt->opts & GT_FORCE) {
 		u = usbg_get_gadget_udc(g);
-		if (u == NULL) {
+		if (u != NULL) {
 			ret = usbg_disable_gadget(g);
 			if (ret < 0) {
 				fprintf(stderr, "Error disabling gadget: %s\n",
