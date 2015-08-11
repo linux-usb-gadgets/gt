@@ -24,6 +24,7 @@
 #include "common.h"
 #include "settings.h"
 #include "function.h"
+#include "configuration.h"
 
 /**
  * @brief Get implicite gadget
@@ -290,6 +291,7 @@ static int print_gadget(usbg_gadget *g, int opts)
 	usbg_gadget_attrs g_attrs;
 	usbg_udc *u;
 	usbg_function *f;
+	usbg_config *c;
 	int usbg_ret;
 	const char *name;
 
@@ -328,7 +330,9 @@ static int print_gadget(usbg_gadget *g, int opts)
 			gt_print_function_libusbg(f, opts);
 		}
 
-		/* TODO print config */
+		usbg_for_each_config(c, g) {
+			gt_print_config_libusbg(c, opts);
+		}
 	}
 
 	return 0;

@@ -1,6 +1,7 @@
 
 INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include
-			${CMAKE_SOURCE_DIR}/function/include )
+			${CMAKE_SOURCE_DIR}/function/include
+			${CMAKE_SOURCE_DIR}/config/include )
 
 SET( GADGET_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/gadget.c
