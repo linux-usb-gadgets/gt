@@ -327,7 +327,13 @@ static void gt_gadget_set_destructor(void *data)
 
 static int gt_gadget_set_help(void *data)
 {
-	printf("Gadget set help.\n");
+	printf("usage: %s set <gadget_name> <attr>=<val> ...\n"
+	       "Sets given attributes to new values. \n"
+	       "\n"
+	       "Options:\n"
+	       "  -h, --help\tPrint this help\n",
+	       program_name);
+
 	return -1;
 }
 
@@ -944,6 +950,20 @@ const Command *get_gadget_children(const Command *cmd)
 
 int gt_gadget_help(void *data)
 {
-	printf("Gadget help function\n");
+	printf("usage: %1$s <command> ...\n"
+	       "Manage gadgets and their attributes.\n"
+	       "Commands:\n"
+	       " create\n"
+	       " rm\n"
+	       " get\n"
+	       " set\n"
+	       " enable\n"
+	       " disable\n"
+	       " gadget\n"
+	       " template\n"
+	       " load\n"
+	       " save\n"
+	       "try %1$s <command> --help for more help\n",
+	       program_name);
 	return -1;
 }
