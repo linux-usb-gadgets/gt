@@ -109,6 +109,56 @@ static int add_func(void *data)
 	return 0;
 }
 
+static int del_func(void *data)
+{
+	int usbg_ret = USBG_SUCCESS;
+	usbg_binding *b, *found = NULL;
+	usbg_config *c;
+	usbg_gadget *g;
+	usbg_function *f;
+	struct gt_config_add_del_data *dt;
+
+	dt = (struct gt_config_add_del_data *)data;
+
+	g = usbg_get_gadget(backend_ctx.libusbg_state, dt->gadget);
+	if (g == NULL) {
+		fprintf(stderr, "Unable to get gadget\n");
+		return -1;
+	}
+
+	c = usbg_get_config(g, dt->config_id, dt->config_label);
+	if (c == NULL) {
+		fprintf(stderr, "Unable to get config\n");
+		return -1;
+	}
+
+	usbg_for_each_binding(b, c) {
+		f = usbg_get_binding_target(b);
+		if (f == NULL) {
+			fprintf(stderr, "Unable to get binding target\n");
+			return -1;
+		}
+
+		if (strcmp(usbg_get_function_type_str(usbg_get_function_type(f)), dt->type) == 0 &&
+			strcmp(usbg_get_function_instance(f), dt->instance) == 0) {
+				found = b;
+				break;
+		}
+	}
+
+	if (found) {
+		usbg_ret = usbg_rm_binding(found);
+		if (usbg_ret != USBG_SUCCESS) {
+			fprintf(stderr, "Error removing binding\n");
+			return -1;
+		}
+	} else {
+		fprintf(stderr, "Function not found in given config\n");
+	}
+
+	return 0;
+}
+
 int gt_print_config_libusbg(usbg_config *c, int opts)
 {
 	usbg_binding *b;
@@ -270,7 +320,7 @@ struct gt_config_backend gt_config_backend_libusbg = {
 	.get = NULL,
 	.set = NULL,
 	.show = show_func,
-	.del = NULL,
+	.del = del_func,
 	.template_default = NULL,
 	.template_get = NULL,
 	.template_set = NULL,
