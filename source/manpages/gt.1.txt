@@ -128,6 +128,49 @@ optional arguments (starting with -).
 *gt template rm* <name>::
 	Removes gadget template with specified name.
 
+*func show* <gadget> [type [instance]]::
+	Show functions. If no function was specified, show all functions.
+	If only function type was specified show only functions of this type.
+	Options:
+	-v --verbose ::: Show also attributes
+	--instance ::: Show only function instances (cannot be used with --type)
+	--type ::: Show only function types (cannot be used with --instance)
+
+*func create* <gadget> <type> <instance>::
+	Create new function of specified type with given instance name.
+
+*func rm* <gadget> <type> <instance>::
+	Remove a function.
+	Options:
+	-f --force ::: Disable gadget if neccessary
+	-r --recursive ::: Unbind function from all configs
+
+*func list-types*::
+	Print list of supported function types.
+
+*config show* <gadget> [label [id]]::
+	Show configurations. If only label was specified, show all configs with
+	this label. When no label was specified, show all configurations in
+	gadget.
+	Options:
+	-r --recursive ::: Show also functions in configs.
+	-v --verbose ::: Show also attributes
+
+*config create* <gadget> <label> <id>::
+	Add new config to a gadget.
+
+*config rm* <gadget> <label> <id>::
+	Remove configuration.
+	Options:
+	-f --force ::: Disable gadget if it is enabled
+	-r --recursive ::: Recursively remove all functions from this config
+
+*config add* <gadget> <config_label> <config_id> <func_type> <func_instance>::
+	Add a function to specified configuration.
+
+*config del* <gadget> <config_label> <config_id> <func_type> <func_instance>::
+	Remove a function from specified configuration.
+
 EXAMPLE
 -------
 To create simple ethernet gadget execute following commands:
