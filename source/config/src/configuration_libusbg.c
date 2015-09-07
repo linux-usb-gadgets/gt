@@ -196,7 +196,9 @@ int gt_print_config_libusbg(usbg_config *c, int opts)
 		printf("    bmAttributes\t0x%02x\n", c_attrs.bmAttributes);
 
 		usbg_ret = usbg_get_config_strs(c, LANG_US_ENG, &c_strs);
-		if (usbg_ret != USBG_SUCCESS) {
+		if (usbg_ret == USBG_ERROR_NOT_FOUND) {
+			fprintf(stderr, "Configuration strings not found\n");
+		} else if (usbg_ret != USBG_SUCCESS) {
 			fprintf(stderr, "Error: %s : %s\n", usbg_error_name(usbg_ret),
 					usbg_strerror(usbg_ret));
 			return -1;
