@@ -169,6 +169,15 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		break;
 	}
 
+	case USBG_F_ATTRS_LOOPBACK:
+	{
+		usbg_f_loopback_attrs *attrs = &f_attrs.attrs.loopback;
+
+		fprintf(stdout, "    buflen\t\t%d\n", attrs->buflen);
+		fprintf(stdout, "    qlen\t\t%d\n", attrs->qlen);
+		break;
+	}
+
 	default:
 		fprintf(stdout, "    UNKNOWN\n");
 	}
