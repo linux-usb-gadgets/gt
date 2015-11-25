@@ -11,6 +11,8 @@ BuildRequires:   cmake
 BuildRequires:   pkgconfig
 BuildRequires:   pkgconfig(glib-2.0)
 BuildRequires:   pkgconfig(libusbg)
+BuildRequires:   asciidoc
+BuildRequires:   xsltproc
 
 %description
 Gt is a command line tool for USB gadget management through
