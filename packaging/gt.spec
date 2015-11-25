@@ -30,6 +30,8 @@ make
 %install
 %make_install
 
+%docs_package
+
 %files
 %manifest %{name}.manifest
 %license LICENSE
@@ -37,3 +39,4 @@ make
 /usr/local/bin/gt
 /etc/gt/gt.conf
 /etc/bash_completion.d/gt
+
