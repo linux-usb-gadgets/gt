@@ -22,10 +22,10 @@ gadget and also load or save gadet from/to file.
 %prep
 %setup -q
 cp %{SOURCE1001} .
-cmake ./source/
+cmake -DCMAKE_INSTALL_PREFIX=/usr/ ./source/
 
 %build
-make
+make 
 
 %install
 %make_install
@@ -36,7 +36,7 @@ make
 %manifest %{name}.manifest
 %license LICENSE
 %defattr(-,root,root)
-/usr/local/bin/gt
+/usr/bin/gt
 /etc/gt/gt.conf
 /etc/bash_completion.d/gt
 
