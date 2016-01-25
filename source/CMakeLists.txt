@@ -18,7 +18,7 @@ ADD_DEFINITIONS("-DGT_SETTING_PATH=\"${CONFDIR}/${CONFFILE}\"")
 ADD_DEFINITIONS("-DPREFIX=\"${PREFIX}\"")
 
 SET(PKG_MODULES
-        libusbg
+        libusbgx
 	glib-2.0
 	gio-2.0
 	libconfig

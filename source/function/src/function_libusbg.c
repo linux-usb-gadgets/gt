@@ -16,6 +16,12 @@
 
 #include <stdio.h>
 #include <usbg/usbg.h>
+#include <usbg/function/ms.h>
+#include <usbg/function/net.h>
+#include <usbg/function/ffs.h>
+#include <usbg/function/phonet.h>
+#include <usbg/function/midi.h>
+#include <usbg/function/loopback.h>
 
 #include "function.h"
 #include "common.h"
@@ -83,7 +89,15 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 	const char *instance;
 	usbg_function_type type;
 	int usbg_ret;
-	usbg_function_attrs f_attrs;
+	union {
+		struct usbg_f_net_attrs net;
+		char *ffs_dev_name;
+		struct usbg_f_ms_attrs ms;
+		struct usbg_f_midi_attrs midi;
+		int serial_port_num;
+		char *phonet_ifname;
+		struct usbg_f_loopback_attrs loopback;
+	} f_attrs;
 
 	instance = usbg_get_function_instance(f);
 	if (!instance) {
@@ -111,36 +125,38 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 	if (!(opts & GT_VERBOSE))
 		return 0;
 
-	switch (f_attrs.header.attrs_type) {
-	case USBG_F_ATTRS_SERIAL:
+	switch (type) {
+	case F_ACM:
+	case F_OBEX:
+	case F_SERIAL:
 		fprintf(stdout, "    port_num\t\t%d\n",
-				f_attrs.attrs.serial.port_num);
+			f_attrs.serial_port_num);
 		break;
 
-	case USBG_F_ATTRS_NET:
-	{
-		usbg_f_net_attrs *f_net_attrs = &f_attrs.attrs.net;
-
+	case F_ECM:
+	case F_SUBSET:
+	case F_NCM:
+	case F_EEM:
+	case F_RNDIS:
 		fprintf(stdout, "    dev_addr\t\t%s\n",
-			ether_ntoa(&f_net_attrs->dev_addr));
+			ether_ntoa(&f_attrs.net.dev_addr));
 		fprintf(stdout, "    host_addr\t\t%s\n",
-			ether_ntoa(&f_net_attrs->host_addr));
-		fprintf(stdout, "    ifname\t\t%s\n", f_net_attrs->ifname);
-		fprintf(stdout, "    qmult\t\t%d\n", f_net_attrs->qmult);
-		break;
-	}
-
-	case USBG_F_ATTRS_PHONET:
-		fprintf(stdout, "    ifname\t\t%s\n", f_attrs.attrs.phonet.ifname);
+			ether_ntoa(&f_attrs.net.host_addr));
+		fprintf(stdout, "    ifname\t\t%s\n", f_attrs.net.ifname);
+		fprintf(stdout, "    qmult\t\t%d\n", f_attrs.net.qmult);
 		break;
 
-	case USBG_F_ATTRS_FFS:
-		fprintf(stdout, "    dev_name\t\t%s\n", f_attrs.attrs.ffs.dev_name);
+	case F_PHONET:
+		fprintf(stdout, "    ifname\t\t%s\n", f_attrs.phonet_ifname);
 		break;
 
-	case USBG_F_ATTRS_MS:
+	case F_FFS:
+		fprintf(stdout, "    dev_name\t\t%s\n", f_attrs.ffs_dev_name);
+		break;
+
+	case F_MASS_STORAGE:
 	{
-		usbg_f_ms_attrs *attrs = &f_attrs.attrs.ms;
+		struct usbg_f_ms_attrs *attrs = &f_attrs.ms;
 		int i;
 
 		fprintf(stdout, "    stall\t\t%d\n", attrs->stall);
@@ -151,14 +167,14 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 			fprintf(stdout, "      ro\t\t%d\n", attrs->luns[i]->ro);
 			fprintf(stdout, "      nofua\t\t%d\n", attrs->luns[i]->nofua);
 			fprintf(stdout, "      removable\t\t%d\n", attrs->luns[i]->removable);
-			fprintf(stdout, "      file\t\t%s\n", attrs->luns[i]->filename);
+			fprintf(stdout, "      file\t\t%s\n", attrs->luns[i]->file);
 		}
 		break;
 	}
 
-	case USBG_F_ATTRS_MIDI:
+	case F_MIDI:
 	{
-		usbg_f_midi_attrs *attrs = &f_attrs.attrs.midi;
+		struct usbg_f_midi_attrs *attrs = &f_attrs.midi;
 
 		fprintf(stdout, "    index\t\t%d\n", attrs->index);
 		fprintf(stdout, "    id\t\t\t%s\n", attrs->id);
@@ -169,9 +185,9 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		break;
 	}
 
-	case USBG_F_ATTRS_LOOPBACK:
+	case F_LOOPBACK:
 	{
-		usbg_f_loopback_attrs *attrs = &f_attrs.attrs.loopback;
+		struct usbg_f_loopback_attrs *attrs = &f_attrs.loopback;
 
 		fprintf(stdout, "    buflen\t\t%d\n", attrs->buflen);
 		fprintf(stdout, "    qlen\t\t%d\n", attrs->qlen);
@@ -182,7 +198,7 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		fprintf(stdout, "    UNKNOWN\n");
 	}
 
-	usbg_cleanup_function_attrs(&f_attrs);
+	usbg_cleanup_function_attrs(f, &f_attrs);
 	return 0;
 }
 
