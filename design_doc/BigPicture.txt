@@ -19,20 +19,20 @@ Content:
 
 			     1. Problem Description
 
-	Till introduction of ConfigFS composite gadget in Linux kernel USB
-gadgets could be only statically formed. This means that each USB gadget have
-it's own module where set of function was defined by programmer while writting
-this module. To run such gadget user could simply:
+	Until the introduction of ConfigFS composite gadget into the Linux kernel USB
+gadgets could only be formed statically. This meant that each USB gadget had
+its own module with a set of functions, which were defined by the programmer when writing
+that module. To run such gadget the user simply executed:
 
 	$ modprobe <gadget_module> [additional options]
 
-The usage of the old convention was easy but inflexible. User could not form
-custom gadget without writting a new module.
+Using the old convention was easy but inflexible. Without writing a new module the user 
+could not form custom gadgets.
 
-	ConfigFS has separated code of functions and configuration. This means
-that there is a set of modules which implements each one USB function and the
-gadget is build in runtime by creating directories, files and symbolic links.
-To set up a gadget using ConfigFS user need to execute at least:
+	ConfigFS separates code for functions and configuration. This means
+that there is a set of modules that implement one USB function each, and the
+gadget is build at runtime by creating directories, files and symbolic links.
+To set up a gadget using ConfigFS the user needs to execute at least:
 
 	$ cd $CONFIGFS_HOME
 	$ mkdir <gadget name>
@@ -43,32 +43,32 @@ To set up a gadget using ConfigFS user need to execute at least:
 	$ echo <udc name> > UDC
 
 Gadget creation is quite easy but it needs five times more commands than
-without using ConfigFS! Users are lazy so they will use a method which needs
+without using ConfigFS! Users are lazy, so they will use the method that requires
 less work.
 
-Current state is a consequence of ConfigFS design goals. One of the requirements
-was to allow user configure gadget without any external tool. The kernel goal
-has been reached, gadget can be configured without any tools but it's not a
-comfortable method for end users. That's why I decided to create this tool,
-make linux users life better. Let's create better solutions together!
+The current situation is a consequence of the ConfigFS design goals. One of the requirements
+was to allow user to configure gadgets without any external tools. The kernel goal
+has been reached, gadgets can be configured without any tools, but it is not a
+comfortable method for the end users. That is why I decided to create this tool
+to make linux users life better. Let's create better solutions together!
 
 ========================================
 
 				    2. Goals
 
-	The main goal is to allow user set up an USB gadget using only one
-command just like using modprobe. This goal is absolutely a must and it has to be
+	The main goal is to allow the user to set up a USB gadget using only one
+command just like when using modprobe. This goal is absolutely a must, and it has to be
 achieved.
-	Second goal is to wrap file system operations (mkdir, ln -s echo etc.)
+	The second goal is to wrap file system operations (mkdir, ln -s echo etc.)
 with gadget specific commands. It would be great if a user could simply set
-some parameters of configuration/device/function with dedicated command line
-calls instead of direct manipulation on config file system.
-	Third goal is to allow user share gadgets with other users with simply
+some parameters for configuration/device/function with dedicated command line
+calls instead of having to manipulate the config file system directly.
+	The third goal is to allow users to share gadgets with other users by simply
 providing them some file. This will allow linux distributions to provide a set
-of standard gadget configurations and to achieve first goal.
-	Fourth goal is to allow user share their functions and configurations.
-This goal is not so important as third goal but it's a nice feature to allow
-user to share not only whole gadget but also a part of it.
+of standard gadget configurations and achieve the first goal.
+	The fourth goal is to allow users to share their functions and configurations.
+This goal is not as important as the third goal but it is a nice feature to allow
+users to not only share whole gadgets but also parts of them.
 
 ========================================
 
@@ -78,25 +78,25 @@ user to share not only whole gadget but also a part of it.
 
 			    ==== 3.1.1 Commands ====
 
-Shows the list of available udc
+Shows a list of all available udc
 
 	$ gt udc
 
-Sets the variable to a given value
+Sets the specified variable to a given value
 
 	$ gt settings set <variable>=<value>
 
-Get's the value of all variable or variables passed as parameters
+Gets the value of the variable or all variables passed as parameters
 
 	$ gt settings get [variable]
 
-Used for variables which contains a list. Appends the value to the list
-represented by variable
+Used for variables that contain a list. Appends the value specified to the 
+list represented by the variable
 
 	$ gt settings append <variable> <value>
 
-Used for variables which contains a list. Removes a value from list
-represented by variable.
+Used for variables that contain a list. Removes the value specified from the 
+listf represented by the variable
 
 	$ gt settings detach <variable> <value>
 
@@ -108,11 +108,11 @@ If unset and only one udc is available that one is taken as default
 
 	default-udc
 
-Path where ConfigFS has been mounted
+Path to where ConfigFS has been mounted
 
 	config-fs-path
 
-List of paths which where gt should look for gadgets, configs and functions
+List of paths on which gt should look for gadgets, configs and functions
 
 	lookup-path
 
@@ -120,7 +120,7 @@ Path where templates should be stored. Default could be /etc/gt/templates
 
 	default-template-path
 
-Default gadget to be load. By setting value of this variable user can simply
+Default gadget to be loaded. By setting this variable the user can simply
 write gt load and $default-gadget will be loaded and enabled.
 
 	default-gadget
@@ -129,104 +129,101 @@ write gt load and $default-gadget will be loaded and enabled.
 
 	       ==== 3.2.1 Gadget view, creation and manipulation ====
 
-Creates a gadget with a specified name and sets its attributes to given
+Creates a gadget with a specified name and sets its attributes to the given
 values.
 Options:
--f --force - override the gadget if gadget with this name already exist
+-f --force - override if gadget with this name already exists
 
 	$ gt create <gadget name> [attr=val]
 
-Removes a gadget with given name. Gadget should not contain any configuration
-or function, unless -r --recursive option is used.
+Removes gadget with given name. The gadget should not contain any configuration
+or functions, unless the -r --recursive option is used.
 Options:
--f --force - disable gadget before removing if gadget is enabled
--r --recursive - recursively removes all configurations and functions if any
+-f --force - disable gadget before removing if it is enabled
+-r --recursive - recursively remove all configurations and functions if any exist
 
 	$ gt rm <gadget name>
 
-Prints to standard output names of attributes and their current values. If
-attr has not been given, all attributes are printed.
+Prints the names of attributes and their current values to standard output. If
+attr is not specified, all attributes are printed.
 
 	$ gt get <gadget name> [attr]
 
-Sets given attributes to new values. If an attribute should be created the
-name should be completed with / and it's value set to 1, or to 0
-if attr should be removed. For example gt set gadget1 strings/0x415/=1 creates
-a directory 0x415 in strings directory, and then you can simply set values of
+Sets given attributes to new values. Append the attribut's name with / if the 
+attribute should be created. Set the value to 1 or to 0 if the attribute should
+be removed. For example, gt set gadget1 strings/0x415/=1 creates a directory
+0x415 in the strings directory, and then you can simply set values of the
 attributes below that directory - gt set gadget1
-strings/0x415/manofacturer="Polski producent"
+strings/0x415/manofacturer="Polski producent".
 
 	$ gt set <gadget_name> <attr>=<val>
 
-Enables gadget on udc. If gadget has not been specified and only one exist
-than one is taken. If more than one gadget exist including default one the
-default is taken, else command fails due to ambiguous gadget. That same rule is
-used while choosing an udc.
+Enables gadget on udc. If not gadget has been specified and only one exists,
+then that one is chosen. If more than one gadget exist and a default one is set, 
+then the default is chosen. Otherwise the command fails due to ambiguous gadget. 
+That same rules are applied when choosing a udc.
 Options:
 -g=<gadget> --gadget=<gadget> - specifies gadget to enable
--u=<udc> --udc=<udc> - specifies udc to enable gadget on it
+-u=<udc> --udc=<udc> - specifies udc to enable gadget on
 
 	$ gt enable
 
-Disable gadget. If gadget has been specified it is disabled, otherwise: if
+Disables gadget. If gadget has been specified it is disabled, otherwise: if
 only one gadget exist it is used, if more than one gadget exist including
 default gadget, the default is disabled else error due to ambiguous gadget name
 unless -u or --udc option was used.
 Options:
--u=<udc> --udc=<udc> - disables a gadget which is active at given udc
+-u=<udc> --udc=<udc> - disable a gadget which is active at given udc
 
 	$ gt disable [gadget]
 
-If no gadget specified shows the list of gadgets, otherwise shows the gadget
+Shows a list of all gadgets if no gadget is specified, otherwise shows the gadget's
 name, list of configurations and list of functions.
 Options:
--v --verbose - shows not only the name of gadget but also it's attributes
--r --recursive - shows the details about each function and configuration
+-v --verbose - show not only the gadget's name but also its attributes
+-r --recursive - show details about each function and configuration
 attributes
 
 	$ gt gadget [gadget]
 
 		  ==== 3.2.1 Gadget template manipulation ====
 
-If no name specified shows the list of templates, otherwise shows the template
+Shows the list of templates if no name is specified, otherwise shows the template's
 name, list of configurations and list of functions.
-Options:
--v --verbose - shows not only the name of gadget but also it's attributes
--r --recursive - shows the details about each function and configuration
-attributes
 
 	$ gt template [name]
 
 Loads the gadget settings related to name, creates and enables the created
 gadget.
 Options:
--o --off Don't enable gadget after load
---file=<gadget_file> loads gadget from file instead of from paths
---stdin loads gadget from stdin
---path=<path> loads gadget located in some path instead of from standard paths
+-o --off do not enable gadget after load
+--file=<gadget_file> load gadget from file instead of path
+--stdin load gadget from stdin
+--path=<path> load gadget located in some path instead of standard path
 
 	$ gt load <name> [gadget name]
 
-Stores the gadget configuration in system templates as name. If name not
-specified gadget's name is used. Sets the template attributes to given values.
+Stores the gadget's configuration in system templates as name and sets the 
+template attributes to the given values. If name is not specified, the gadget's 
+name is used.
 Options:
--f --force override gadget template if exist
---file=<gadget_file> stores in file
---stdout prints the configuration to standard output
---path=<path> stores gadget in given path instead of default
+-f --force override if gadget template with this name already exists
+--file=<gadget_file> store in file
+--stdout print the configuration to standard output
+--path=<path> store gadget in given path instead of default path
 
 	$ gt save <gadget> [name] [template_attr=val]
 
-Prints to standard output names of template attributes and their current
-values. If attr has not been given, all attributes are printed.
+Prints the names of template attributes and their current
+values to standard output. If attr is not specified, all attributes are printed.
 
 	$ gt template get <name> [template_attr]
 
-Sets given attributes to new values.
+Sets the given attributes to new values.
 
 	$ gt template set <name> <attr>=<val>
 
-Removes gadget template with specified name.
+Removes the gadget template with the specified name.
 
 	$ gt template rm <name>
 
@@ -234,40 +231,40 @@ Removes gadget template with specified name.
 
 	 ==== 3.3.1 Configuration view, creation and manipulation ====
 
-Creates a configuration in given gadget and sets its attributes to given
-values.
+Creates a configuration in the given gadget and sets its attributes to the 
+given values.
 Options:
--f --force - override the config if config with this name already exist
+-f --force - override the config if config with this name already exists
 
 	$ gt config create <gadget name> <config name> [attr=val]
 
-Removes a config from gadget. Config should not contain any functions,
-unless -r --recursive option is used.
+Removes a configuration from the given gadget. Config should not contain any 
+functions, unless the -r --recursive option is used.
 Options:
 -f --force - disable gadget before removing if gadget is enabled
--r --recursive - recursively removes all functions if any
+-r --recursive - recursively remove all functions if any
 
 	$ gt config rm <gadget name> <config name>
 
-Prints to standard output names of attributes and their current values. If
-attr has not been given, all attributes are printed.
+Prints the names of attributes and their current values to standard output. If
+attr is not specified, all attributes are printed.
 
 	$ gt config get <gadget name> <config name> [attr]
 
-Sets given attributes to new values. If an attribute should be created the
-name should be completed with / and it's value set to 1, or to 0
-if attr should be removed. For example gt config set gadget1 c.1
-strings/0x415/=1 creates a directory 0x415 in strings directory, and then you
+Sets given attributes to new values. Append the attribut's name with / if the 
+attribute should be created. Set the value to 1, or to 0 if the  attribute 
+should be removed. For example gt config set gadget1 c.1
+strings/0x415/=1 creates a directory 0x415 in the strings directory, and then you
 can simply set values of attributes below that directory - gt config set
-gadget1 strings/0x415/configuration="Konfiguracja"
+gadget1 strings/0x415/configuration="Konfiguracja".
 
 	$ gt config set <gadget name> <config name> <attr>=<val>
 
-If no config specified shows the list of configs, otherwise shows the config
+Shows the list of all configs if no config is specified, otherwise shows the config's
 name and list of functions.
 Options:
--v --verbose - shows not only the name of config but also it's attributes
--r --recursive - shows the details about each function
+-v --verbose - show not only the config's name but also its attributes
+-r --recursive - show details about each function
 
 	$ gt config <gadget name> [config name]
 
@@ -285,37 +282,37 @@ Removes specified function from configuration. Function can be specified as
 
 		  ==== 3.3.1 Config template manipulation ====
 
-If no name specified shows the list of templates, otherwise shows the template
+Shows the list of all templates if no name is specified, otherwise shows the template's
 name and list of functions.
 Options:
--v --verbose - shows not only the name of config but also it's attributes
--r --recursive - shows the details about each function and attributes
+-v --verbose - show not only the template's name but also its attributes
+-r --recursive - show details about each function and attributes
 
 	$ gt config template [name]
 
 Loads the config settings related to name.
 Options:
---file=<config_file> loads gadget from file instead of from paths
---stdin loads config from stdin
---path=<path> loads config located in some path instead of from standard paths
--r --recursive loads also function which this config contains
--f --force overrides functions if functions with such names already exist
+--file=<config_file> load gadget from file instead of from paths
+--stdin load config from stdin
+--path=<path> load config located in some path instead of standard path
+-r --recursive load also function, which this config contains
+-f --force override if functions with these names already exist
 
 	$ gt config load <name> <gadget name> [config name]
 
-Stores the configuration and it's function in system templates as name.
-If name not specified config name is used. Sets the template attributes to
-given values.
+Stores the configuration and its function in system templates as name and sets the
+template attributes to the given values. If name is not specified, the config's name 
+is used.
 Options:
--f --force override gadget template if exist
---file=<config_file> stores in file
---stdout prints the configuration to standard output
---path=<path> stores config in given path instead of default
+-f --force override if gadget template with this name already exists
+--file=<config_file> store in file
+--stdout print the configuration to standard output
+--path=<path> store config in given path instead of default path
 
 	$ gt config save <gadget> <config> [name] [template_attr=val]
 
-Prints to standard output names of template attributes and their current
-values. If attr has not been given, all attributes are printed.
+Prints the names of template attributes and their current values to standard output.
+If template_attr is not specified, all attributes are printed.
 
 	$ gt config template get <name> [template_attr]
 
@@ -334,47 +331,47 @@ Removes config template with specified name.
 Creates a function in given gadget and sets its attributes to given
 values.
 Options:
--f --force - override the function if function with this name already exist
+-f --force - override if function with this name already exists
 
 	$ gt func create <gadget name> <func type> <func name> [attr=val]
 	$ gt func create <gadget name> <function>
 
-Removes a config from gadget. Config should not contain any functions,
-unless -r --recursive option is used.
+Removes a config from gadget. The config should not contain any functions,
+unless the -r --recursive option is used.
 Options:
 -f --force - disable gadget before removing if gadget is enabled
 
 	$ gt func rm <gadget name> <func type> <func name>
 	$ gt func rm <gadget name> <function>
 
-Prints to standard output names of attributes and their current values. If
-attr has not been given, all attributes are printed.
+Prints the names of attributes and their current values to standard output. If
+attr is not specified, all attributes are printed.
 
 	$ gt func get <gadget name> <func type> <func name> [attr]
 	$ gt func get <gadget name> <function> [attr]
 
-Sets given attributes to new values. If an attribute should be created the
-name should be completed with / and it's value set to 1, or to 0
-if attr should be removed. For example gt func set gadget1 mass_storage.f1
-lun.1/=1 creates a directory lun.1 in function directory, and then you can
+Sets given attributes to new values. Append the attribut's name with / 
+if the attribute should be created. Set the value to 1, or to 0 if the
+attribute should be removed. For example gt func set gadget1 mass_storage.f1
+lun.1/=1 creates a directory lun.1 in the function directory, and then you can
 simply set values of attributes below that directory - gt func set gadget1
 mass_storage.f1 lun.1/file=/root/some_image.img
 
 	$ gt func set <gadget name> <func type> <func name> <attr>=<val>
 	$ gt func set <gadget name> <function> <attr>=<val>
 
-If no function specified shows the list of functions, otherwise shows the
-function name and list of first level attributes.
+Shows a list of all functions if no function is specified, otherwise shows the
+function's name and list of first level attributes.
 Options:
--v --verbose - shows all levels of attributes
+-v --verbose - show all levels of attributes
 
 	$ gt func <gadget name> [<func type> <func name>]
 	$ gt func <gadget name> [function]
 
 		    === 3.4.2 Function template manipulation ====
 
-If no function specified shows the list of functions, otherwise shows the
-function name and list of first level attributes.
+Shows a list of all functions if no function is specified, otherwise shows the
+function's name and list of first level attributes.
 Options:
 -v --verbose - shows all levels of attributes
 
@@ -382,26 +379,26 @@ Options:
 
 Loads the function related to name.
 Options:
---file=<func file> loads gadget from file instead of from paths
---stdin loads function from stdin
---path=<path> loads function located in some path instead of standard paths
--f --force overrides function if function with such names already exist
+--file=<func file> load gadget from file instead of path
+--stdin load function from stdin
+--path=<path> load function located in some path instead of standard path
+-f --force override if function with this name already exists
 
 	$ gt func load <name> <gadget name> [func name]
 
-Stores the configuration and it's function in system templates as name.
-If name not specified function is used. Sets the template attributes to
-given values.
+Stores the configuration and its function in system templates as name and sets
+the template attributes to the given values. If no name specified, function's 
+name is used.
 Options:
--f --force override func template if exist
---file=<gadget_file> stores in file
---stdout prints the function to standard output
---path=<path> stores function in given path instead of default
+-f --force override if function template with the this  name already exist
+--file=<gadget_file> store in file
+--stdout print the function to standard output
+--path=<path> store the function in given path instead of default path
 
 	$ gt func save <gadget> <function> [name] [template_attr=val]
 
-Prints to standard output names of template attributes and their current
-values. If attr has not been given, all attributes are printed.
+Prints the names of template attributes and their current values to standard
+output. If template_attr is not specified, all attributes are printed.
 
 	$ gt func template get <name> [template_attr]
 
