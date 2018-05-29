@@ -55,16 +55,16 @@ static void gt_gadget_create_destructor(void *data)
 char *attr_type_get(usbg_gadget_attr a)
 {
 	switch (a) {
-	case B_DEVICE_CLASS:
-	case B_DEVICE_SUB_CLASS:
-	case B_DEVICE_PROTOCOL:
-	case B_MAX_PACKET_SIZE_0:
+	case USBG_B_DEVICE_CLASS:
+	case USBG_B_DEVICE_SUB_CLASS:
+	case USBG_B_DEVICE_PROTOCOL:
+	case USBG_B_MAX_PACKET_SIZE_0:
 		return "y";
 
-	case BCD_USB:
-	case ID_VENDOR:
-	case ID_PRODUCT:
-	case BCD_DEVICE:
+	case USBG_BCD_USB:
+	case USBG_ID_VENDOR:
+	case USBG_ID_PRODUCT:
+	case USBG_BCD_DEVICE:
 		return "q";
 
 	default:

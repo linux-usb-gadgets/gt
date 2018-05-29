@@ -165,8 +165,8 @@ int gt_print_config_libusbg(usbg_config *c, int opts)
 	usbg_function *f;
 	const char *label, *instance, *bname;
 	usbg_function_type type;
-	usbg_config_attrs c_attrs;
-	usbg_config_strs c_strs;
+	struct usbg_config_attrs c_attrs;
+	struct usbg_config_strs c_strs;
 	int usbg_ret, id;
 
 	label = usbg_get_config_label(c);

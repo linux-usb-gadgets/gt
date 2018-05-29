@@ -126,18 +126,18 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		return 0;
 
 	switch (type) {
-	case F_ACM:
-	case F_OBEX:
-	case F_SERIAL:
+	case USBG_F_ACM:
+	case USBG_F_OBEX:
+	case USBG_F_SERIAL:
 		fprintf(stdout, "    port_num\t\t%d\n",
 			f_attrs.serial_port_num);
 		break;
 
-	case F_ECM:
-	case F_SUBSET:
-	case F_NCM:
-	case F_EEM:
-	case F_RNDIS:
+	case USBG_F_ECM:
+	case USBG_F_SUBSET:
+	case USBG_F_NCM:
+	case USBG_F_EEM:
+	case USBG_F_RNDIS:
 		fprintf(stdout, "    dev_addr\t\t%s\n",
 			ether_ntoa(&f_attrs.net.dev_addr));
 		fprintf(stdout, "    host_addr\t\t%s\n",
@@ -146,15 +146,15 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		fprintf(stdout, "    qmult\t\t%d\n", f_attrs.net.qmult);
 		break;
 
-	case F_PHONET:
+	case USBG_F_PHONET:
 		fprintf(stdout, "    ifname\t\t%s\n", f_attrs.phonet_ifname);
 		break;
 
-	case F_FFS:
+	case USBG_F_FFS:
 		fprintf(stdout, "    dev_name\t\t%s\n", f_attrs.ffs_dev_name);
 		break;
 
-	case F_MASS_STORAGE:
+	case USBG_F_MASS_STORAGE:
 	{
 		struct usbg_f_ms_attrs *attrs = &f_attrs.ms;
 		int i;
@@ -172,7 +172,7 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		break;
 	}
 
-	case F_MIDI:
+	case USBG_F_MIDI:
 	{
 		struct usbg_f_midi_attrs *attrs = &f_attrs.midi;
 
@@ -185,7 +185,7 @@ int gt_print_function_libusbg(usbg_function *f, int opts)
 		break;
 	}
 
-	case F_LOOPBACK:
+	case USBG_F_LOOPBACK:
 	{
 		struct usbg_f_loopback_attrs *attrs = &f_attrs.loopback;
 
