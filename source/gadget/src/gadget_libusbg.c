@@ -234,25 +234,25 @@ static int disable_func(void *data)
 	return 0;
 }
 
-static void print_gadget_attrs(usbg_gadget_attrs *g_attrs, int *mask) {
-	if (!mask || mask[BCD_USB])
+static void print_gadget_attrs(struct usbg_gadget_attrs *g_attrs, int *mask) {
+	if (!mask || mask[USBG_BCD_USB])
 		printf("  bcdUSB\t\t%x.%02x\n",
 			g_attrs->bcdUSB >> 8,
 			g_attrs->bcdUSB & 0x00ff);
 
-	if (!mask || mask[B_DEVICE_CLASS])
+	if (!mask || mask[USBG_B_DEVICE_CLASS])
 		printf("  bDeviceClass\t\t0x%02x\n", g_attrs->bDeviceClass);
-	if (!mask || mask[B_DEVICE_SUB_CLASS])
+	if (!mask || mask[USBG_B_DEVICE_SUB_CLASS])
 		printf("  bDeviceSubClass\t0x%02x\n", g_attrs->bDeviceSubClass);
-	if (!mask || mask[B_DEVICE_PROTOCOL])
+	if (!mask || mask[USBG_B_DEVICE_PROTOCOL])
 		printf("  bDeviceProtocol\t0x%02x\n", g_attrs->bDeviceProtocol);
-	if (!mask || mask[B_MAX_PACKET_SIZE_0])
+	if (!mask || mask[USBG_B_MAX_PACKET_SIZE_0])
 		printf("  bMaxPacketSize0\t%d\n", g_attrs->bMaxPacketSize0);
-	if (!mask || mask[ID_VENDOR])
+	if (!mask || mask[USBG_ID_VENDOR])
 		printf("  idVendor\t\t0x%04x\n", g_attrs->idVendor);
-	if (!mask || mask[ID_PRODUCT])
+	if (!mask || mask[USBG_ID_PRODUCT])
 		printf("  idProduct\t\t0x%04x\n", g_attrs->idProduct);
-	if (!mask || mask[BCD_DEVICE])
+	if (!mask || mask[USBG_BCD_DEVICE])
 		printf("  bcdDevice\t\t%x.%02x\n",
 			g_attrs->bcdDevice >> 8,
 			g_attrs->bcdDevice & 0x00ff);
@@ -263,7 +263,7 @@ static int get_func(void *data)
 	struct gt_gadget_get_data *dt;
 
 	usbg_gadget *g;
-	usbg_gadget_attrs g_attrs;
+	struct usbg_gadget_attrs g_attrs;
 	int usbg_ret;
 
 	dt = (struct gt_gadget_get_data *)data;
@@ -288,7 +288,7 @@ static int get_func(void *data)
 
 static int print_gadget(usbg_gadget *g, int opts)
 {
-	usbg_gadget_attrs g_attrs;
+	struct usbg_gadget_attrs g_attrs;
 	usbg_udc *u;
 	usbg_function *f;
 	usbg_config *c;
