@@ -8,10 +8,10 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/settings/include)
 
 SET(PREFIX ${CMAKE_INSTALL_PREFIX})
 SET(BINDIR "${PREFIX}/bin")
-SET(CONFDIR "/etc/gt/")
+SET(CONFDIR "${PREFIX}/etc/gt/")
 SET(CONFFILE "gt.conf")
 
-SET(COMPLETION_DIR "/etc/bash_completion.d/")
+SET(COMPLETION_DIR "${PREFIX}/etc/bash_completion.d/")
 SET(COMPLETION_FILES "completions/gt")
 
 ADD_DEFINITIONS("-DGT_SETTING_PATH=\"${CONFDIR}/${CONFFILE}\"")
