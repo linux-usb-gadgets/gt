@@ -24,13 +24,18 @@
 #include "common.h"
 #include "parser.h"
 
+static const char *_lookup_path[] = {
+	"/etc/gt/templates",
+	NULL,
+};
+
 /* Some default values for settings are set here.
  * Settings file will override them if exists. */
 struct gt_setting_list gt_settings = {
-	.default_udc = NULL,
+	.default_udc = "myudc",
 	.configfs_path = "/sys/kernel/config/",
-	.lookup_path = NULL,
-	.default_template_path = ".",
+	.lookup_path = _lookup_path,
+	.default_template_path = "/etc/gt/templates",
 	.default_gadget = "g1",
 };
 
