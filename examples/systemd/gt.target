@@ -1,0 +1,6 @@
+#  SPDX-License-Identifier: MIT or LGPL-2.1+
+#
+# Copyright 2019 Collabora Ltd
+#
+[Unit]
+Description=Hardware activated USB gadget

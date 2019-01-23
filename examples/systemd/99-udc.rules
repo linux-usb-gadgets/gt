@@ -1,0 +1,5 @@
+#  SPDX-License-Identifier: MIT or LGPL-2.1+
+#
+# Copyright 2019 Collabora Ltd
+#
+SUBSYSTEM=="udc", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}+="gt.target"
