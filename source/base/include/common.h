@@ -18,7 +18,9 @@
 #define __GADGET_TOOL_COMMON_H__
 
 #include <stdlib.h>
+#ifdef WITH_GADGETD
 #include <gio/gio.h>
+#endif
 
 /**
  * @brief Short program name
@@ -36,16 +38,20 @@ static inline void *zalloc(size_t size)
 
 #define ARRAY_SIZE(array) sizeof(array)/sizeof(*array)
 
+#ifdef WITH_GADGETD
 static inline void _cleanup_fn_g_free_(void *p) {
 	g_free(*(gpointer *)p);
 }
+#endif
 
 static inline void _cleanup_fn_free_(void *p) {
 	free(*(void **)p);
 }
 
 #define _cleanup_(fn)   __attribute__((cleanup(fn)))
+#ifdef WITH_GADGETD
 #define _cleanup_g_free_ _cleanup_(_cleanup_fn_g_free_)
+#endif
 #define _cleanup_free_  _cleanup_(_cleanup_fn_free_)
 
 #endif //__GADGET_TOOL_COMMON_H__

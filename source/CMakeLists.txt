@@ -21,10 +21,16 @@ ADD_DEFINITIONS("-DPREFIX=\"${PREFIX}\"")
 
 SET(PKG_MODULES
         libusbgx>=0.2.0
-	glib-2.0
-	gio-2.0
 	libconfig
 )
+
+IF (DEFINED CMAKE_WITH_GADGETD)
+	ADD_DEFINITIONS("-DWITH_GADGETD=1")
+	LIST(APPEND PKG_MODULES
+		glib-2.0
+		gio-2.0
+	)
+ENDIF ()
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(pkgs REQUIRED ${PKG_MODULES})

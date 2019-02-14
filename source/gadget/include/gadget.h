@@ -189,7 +189,9 @@ const Command *get_gadget_children(const Command *cmd);
  */
 int gt_gadget_help(void *data);
 
+#ifdef WITH_GADGETD
 extern struct gt_gadget_backend gt_gadget_backend_gadgetd;
+#endif
 extern struct gt_gadget_backend gt_gadget_backend_libusbg;
 extern struct gt_gadget_backend gt_gadget_backend_not_implemented;
 

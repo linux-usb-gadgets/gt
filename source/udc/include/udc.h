@@ -43,7 +43,9 @@ void udc_parse(const Command *cmd, int argc, char **argv,
 		ExecutableCommand *exec, void * data);
 
 extern struct gt_udc_backend gt_udc_backend_libusbg;
+#ifdef WITH_GADGETD
 extern struct gt_udc_backend gt_udc_backend_gadgetd;
+#endif
 extern struct gt_udc_backend gt_udc_backend_not_implemented;
 
 #endif //__GADGET_TOOL_UDC_UDC_PARSE_H__

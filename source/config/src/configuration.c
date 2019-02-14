@@ -26,7 +26,9 @@
 #include "backend.h"
 
 #include <errno.h>
+#ifdef WITH_GADGETD
 #include <gio/gio.h>
+#endif
 
 #define GET_EXECUTABLE(func) \
 	(backend_ctx.backend->config->func ? \

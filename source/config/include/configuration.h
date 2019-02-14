@@ -194,7 +194,9 @@ int gt_config_help(void *data);
  */
 int gt_print_config_libusbg(usbg_config *c, int opts);
 
+#ifdef WITH_GADGETD
 extern struct gt_config_backend gt_config_backend_gadgetd;
+#endif
 extern struct gt_config_backend gt_config_backend_libusbg;
 extern struct gt_config_backend gt_config_backend_not_implemented;
 

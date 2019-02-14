@@ -26,6 +26,10 @@
 #include "function.h"
 #include "configuration.h"
 
+#ifndef WITH_GADGETD
+#define G_N_ELEMENTS(arr)	(sizeof(arr) / sizeof((arr)[0]))
+#endif
+
 /**
  * @brief Get implicite gadget
  * @param[in] s Usbg state

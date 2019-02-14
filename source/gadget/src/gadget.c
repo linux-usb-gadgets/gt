@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef WITH_GADGETD
+#include <stdbool.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,7 +119,11 @@ static int gt_parse_gadget_attrs(struct gt_setting *attrs, int *attr_val, char *
 	int i;
 
 	for (setting = attrs; setting->variable; setting++) {
+#ifdef WITH_GADGETD
 		iter = TRUE;
+#else
+		iter = true;
+#endif
 
 		attr_id = usbg_lookup_gadget_attr(setting->variable);
 		if (attr_id >= 0) {
@@ -136,13 +143,21 @@ static int gt_parse_gadget_attrs(struct gt_setting *attrs, int *attr_val, char *
 			}
 
 			attr_val[attr_id] = val;
+#ifdef WITH_GADGETD
 			iter = FALSE;
+#else
+			iter = false;
+#endif
 		}
 
 		for (i = 0; iter && i < GT_GADGET_STRS_COUNT; i++) {
 			if (streq(setting->variable, gadget_strs[i].name)) {
 				str_val[i] = setting->value;
+#ifdef WITH_GADGETD
 				iter = FALSE;
+#else
+				iter = false;
+#endif
 				break;
 			}
 		}

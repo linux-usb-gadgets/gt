@@ -23,7 +23,9 @@
 #define __GADGET_TOOL_BACKEND_H__
 
 #include <usbg/usbg.h>
+#ifdef WITH_GADGETD
 #include <gio/gio.h>
+#endif
 #include "parser.h"
 
 /**
@@ -38,7 +40,9 @@ int gt_backend_init(const char *program_name, enum gt_option_flags flags);
  */
 enum gt_backend_type {
 	GT_BACKEND_AUTO = 0,
+#ifdef WITH_GADGETD
 	GT_BACKEND_GADGETD,
+#endif
 	GT_BACKEND_LIBUSBG,
 	GT_BACKEND_NOT_IMPLEMENTED,
 };
@@ -57,12 +61,16 @@ struct gt_backend_ctx {
 
 	union {
 		usbg_state *libusbg_state;
+#ifdef WITH_GADGETD
 		GDBusConnection *gadgetd_conn;
+#endif
 	};
 };
 
 extern struct gt_backend gt_backend_libusbg;
+#ifdef WITH_GADGETD
 extern struct gt_backend gt_backend_gadgetd;
+#endif
 extern struct gt_backend gt_backend_not_implemented;
 
 extern struct gt_backend_ctx backend_ctx;
