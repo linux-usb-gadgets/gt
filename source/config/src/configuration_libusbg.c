@@ -63,7 +63,11 @@ static int add_func(void *data)
 	usbg_config *c;
 	int n;
 	char buff[255];
+#ifdef WITH_GADGETD
 	_cleanup_g_free_ gchar *func_name = NULL;
+#else
+	_cleanup_free_ char *func_name = NULL;
+#endif
 	const char *cfg_label = NULL;
 
 	dt = (struct gt_config_add_del_data *)data;

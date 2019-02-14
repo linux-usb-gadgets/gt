@@ -179,7 +179,9 @@ int gt_func_help(void *data);
 int gt_print_function_libusbg(usbg_function *f, int opts);
 
 extern struct gt_function_backend gt_function_backend_libusbg;
+#ifdef WITH_GADGETD
 extern struct gt_function_backend gt_function_backend_gadgetd;
+#endif
 extern struct gt_function_backend gt_function_backend_not_implemented;
 
 #endif //__GADGET_TOOL_FUNCTION_FUNCTION_H__

@@ -19,7 +19,9 @@ This tool can be used to create and configure usb gadgets using configfs.
 It can be executed in two different ways:
 
 * *gt* operates directly on configfs, which requires root privileges.
-* *gadgetctl* use gadgetd daemon to configure gadgets.
+* *gadgetctl* use gadgetd daemon to configure gadgets (if built with gadgetd support)
+
+Note: gadgetd is considered obsolete.
 
 Both commands provide the same syntax described below.
 
@@ -200,4 +202,5 @@ When you want to reload saved gadget, simply run:
 
 	$ gt load ether.scheme g1
 
-When you have gadgetd daemon running, you can replace *gt* with *gadgetctl*.
+When you have gadgetd daemon running, you can replace *gt* with *gadgetctl*,
+if gt has been built with gadgetd support.

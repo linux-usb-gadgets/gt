@@ -17,8 +17,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <usbg/usbg.h>
+#ifdef WITH_GADGETD
 #include <glib.h>
 #include <gio/gio.h>
+#endif
 
 #include "backend.h"
 #include "function.h"
@@ -27,7 +29,11 @@
 #include "udc.h"
 
 struct gt_backend_ctx backend_ctx = {
+#ifdef WITH_GADGETD
 	.backend_type = GT_BACKEND_AUTO,
+#else
+	.backend_type = GT_BACKEND_NOT_IMPLEMENTED,
+#endif
 };
 
 struct gt_backend gt_backend_libusbg = {
@@ -37,12 +43,14 @@ struct gt_backend gt_backend_libusbg = {
 	.udc = &gt_udc_backend_libusbg,
 };
 
+#ifdef WITH_GADGETD
 struct gt_backend gt_backend_gadgetd = {
 	.function = &gt_function_backend_gadgetd,
 	.gadget = &gt_gadget_backend_gadgetd,
 	.config = &gt_config_backend_gadgetd,
 	.udc = &gt_udc_backend_gadgetd,
 };
+#endif
 
 struct gt_backend gt_backend_not_implemented = {
 	.function = &gt_function_backend_not_implemented,
@@ -54,22 +62,31 @@ struct gt_backend gt_backend_not_implemented = {
 int gt_backend_init(const char *program_name, enum gt_option_flags flags)
 {
 	enum gt_backend_type backend_type;
+#ifdef WITH_GADGETD
 	GError *err = NULL;
+#endif
 
 	if (strcmp(program_name, "gt") == 0)
 		backend_type = GT_BACKEND_LIBUSBG;
+#ifdef WITH_GADGETD
 	else if (strcmp(program_name, "gadgetctl") == 0)
 		backend_type = GT_BACKEND_GADGETD;
+#endif
 	else if (strcmp(program_name, "gt-parse-test") == 0)
 		backend_type = GT_BACKEND_NOT_IMPLEMENTED;
 	else
+#ifdef WITH_GADGETD
 		backend_type = GT_BACKEND_AUTO;
+#else
+		backend_type = GT_BACKEND_NOT_IMPLEMENTED;
+#endif
 
 	if (backend_type == GT_BACKEND_NOT_IMPLEMENTED) {
 		backend_ctx.backend = &gt_backend_not_implemented;
 		return 0;
 	}
 
+#ifdef WITH_GADGETD
 	if (backend_type == GT_BACKEND_GADGETD || backend_type == GT_BACKEND_AUTO) {
 		GDBusConnection *conn;
 
@@ -118,6 +135,9 @@ out_gadgetd:
 		return -1;
 
 	if (backend_type == GT_BACKEND_LIBUSBG || backend_type == GT_BACKEND_AUTO) {
+#else
+	if (backend_type == GT_BACKEND_LIBUSBG) {
+#endif
 		usbg_state *s = NULL;
 		int r;
 
