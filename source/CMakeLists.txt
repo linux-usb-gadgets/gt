@@ -46,6 +46,7 @@ ADD_SUBDIRECTORY(function)
 ADD_SUBDIRECTORY(gadget)
 ADD_SUBDIRECTORY(settings)
 ADD_SUBDIRECTORY(udc)
+ADD_SUBDIRECTORY(ffs)
 ADD_SUBDIRECTORY(base)
 ADD_SUBDIRECTORY(manpages)
 
@@ -56,6 +57,7 @@ ADD_EXECUTABLE(${PROJECT_NAME} ${MAIN_SRC})
 TARGET_LINK_LIBRARIES( gt
 	base
 	udc
+	ffs
 	config
 	function
 	gadget

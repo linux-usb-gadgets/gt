@@ -1,5 +1,6 @@
 INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include
 			${CMAKE_SOURCE_DIR}/udc/include
+			${CMAKE_SOURCE_DIR}/ffs/include
 			${CMAKE_SOURCE_DIR}/config/include
 			${CMAKE_SOURCE_DIR}/function/include
 			${CMAKE_SOURCE_DIR}/gadget/include
