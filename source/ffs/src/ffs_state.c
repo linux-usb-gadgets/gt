@@ -303,6 +303,120 @@ out:
 	return ret;
 }
 
+static int gt_ffs_parse_strings(void *buf, off_t *off, off_t size, struct gt_ffs_lang *lang, int str_count, bool last)
+{
+	int i, len;
+	uint8_t val8;
+	char *string, *start;
+	struct gt_ffs_link *item, **ptr;
+
+	for (i = 0; i < str_count; ++i) {
+		/*
+		 * For the purpose of gt the last language can be incomplete:
+		 * if there should be at least one more string but we reach EOF
+		 * then we are done w/o error if this is the last language
+		 */
+		if (*off == size && last)
+			break;
+
+		start = buf + *off;
+		len = 0;
+		do {
+			READ8(val8);
+		} while (val8 != '\0' && ++len);
+
+		string = zalloc(len + 1);
+		if (string == NULL)
+			goto out;
+
+		item = zalloc(sizeof(*item));
+		if (item == NULL)
+			goto out_item;
+
+		strcpy(string, start);
+		item->data = string;
+
+		ptr = &lang->strs;
+		while (*ptr)
+			ptr = &(*ptr)->next;
+		*ptr = item;
+	}
+	lang->count = i;
+
+	return 0;
+out_item:
+	free(string);
+out:
+	return -1;
+}
+
+static int gt_ffs_parse_lang(void *buf, off_t *off, off_t size, struct gt_ffs_strs_state *state, bool last)
+{
+	struct gt_ffs_link *item, **ptr;
+	struct gt_ffs_lang *lang;
+	uint16_t v16;
+
+	item = zalloc(sizeof(*item));
+	if (item == NULL)
+		return -1;
+
+	lang = zalloc(sizeof(*lang));
+	if (lang == NULL)
+		goto out_lang;
+
+	READ16(v16);
+	lang->code = v16;
+	item->data = lang;
+
+	ptr = &state->langs;
+	while (*ptr) {
+		struct gt_ffs_lang *l = (*ptr)->data;
+		if (l->code == lang->code) {
+			fprintf(stderr, "Duplicate language detected!\n");
+			goto out;
+		}
+		ptr = &(*ptr)->next;
+	}
+	*ptr = item;
+
+	return gt_ffs_parse_strings(buf, off, size, lang, state->str_count, last);
+
+out:
+	free(lang);
+out_lang:
+	free(item);
+	return -1;
+}
+
+static int gt_ffs_parse_strs_file(int fd, off_t size, struct gt_ffs_strs_state *state)
+{
+	void *buf;
+	off_t off = 0;
+	int ret = -1;
+	uint32_t val32;
+	int i;
+
+	buf = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (buf == MAP_FAILED)
+		return -1;
+
+	CONSUME32(FUNCTIONFS_STRINGS_MAGIC, "Incorrect magic value!\n");
+	CONSUME32(size, "Incorrect file length!\n");
+	READ32(val32);
+	state->str_count = val32;
+	READ32(val32);
+	state->lang_count = val32;
+
+	for (i = 0; i < state->lang_count; ++i)
+		if (gt_ffs_parse_lang(buf, &off, size, state, i == state->lang_count - 1))
+			goto out;
+
+	ret = 0;
+out:
+	munmap(buf, size);
+	return ret;
+}
+
 #undef READ8
 #undef READ32
 #undef CONSUME32
@@ -340,6 +454,26 @@ static void print_state(struct gt_ffs_state *state)
 		}
 	}
 }
+
+static void print_strings(struct gt_ffs_state *state)
+{
+	struct gt_ffs_link *ptr, *l;
+	struct gt_ffs_lang *lang;
+	int i;
+
+	ptr = state->langs;
+	while (ptr) {
+		lang = ptr->data;
+		printf("lang:%04x, count:%d\n", lang->code, lang->count);
+		l = lang->strs;
+		i = 0;
+		while (l) {
+			printf("%d) %s\n", i++, (char *)l->data);
+			l = l->next;
+		}
+		ptr = ptr->next;
+	}
+}
 #endif
 
 struct gt_ffs_descs_state *gt_ffs_build_descs_state(const char *descs)
@@ -374,6 +508,38 @@ out:
 	return NULL;
 }
 
+struct gt_ffs_strs_state *gt_ffs_build_strs_state(const char *strs)
+{
+	struct gt_ffs_strs_state *state;
+	struct stat st;
+	int ret, fd;
+
+	state = zalloc(sizeof(*state));
+	if (state == NULL)
+		goto out;
+
+	errno = 0;
+	ret = stat(strs, &st);
+	if (errno != ENOENT) {
+		if (ret)
+			goto out;
+		/* no error, file exists */
+		fd = open(strs, O_RDONLY);
+		if (fd < 0)
+			goto out;
+		ret = gt_ffs_parse_strs_file(fd, st.st_size, state);
+		close(fd);
+		if (ret)
+			goto out;
+	} /* else file does not exist, so empty strings state */
+	
+	return state;
+
+out:
+	gt_ffs_cleanup_strs_state(state, strs);
+	return NULL;
+}
+
 static uint32_t gt_ffs_get_state_length(struct gt_ffs_descs_state *state)
 {
 	struct gt_ffs_link *ptr, *arr[3];
@@ -404,6 +570,34 @@ static uint32_t gt_ffs_get_state_length(struct gt_ffs_descs_state *state)
 				result += 7;
 			ptr = ptr->next;
 		}
+	}
+
+	return result;
+}
+
+static uint32_t gt_ffs_get_strings_length(struct gt_ffs_strs_state *state)
+{
+	uint32_t result;
+	struct gt_ffs_link *ptr, *l;
+	struct gt_ffs_lang *lang;
+
+	result = 0;
+	result += 4; /* MAGIC */
+	result += 4; /* length */
+	result += 4; /* strint count */
+	result += 4; /* lang count */
+
+	ptr = state->langs;
+	while (ptr) {
+		lang = ptr->data;
+		result += 2; /* lang code */
+		l = lang->strs;
+		while (l) {
+			result += strlen((char *)l->data);
+			++result; /* '\0' */
+			l = l->next;
+		}
+		ptr = ptr->next;
 	}
 
 	return result;
@@ -506,6 +700,64 @@ void gt_ffs_cleanup_descs_state(struct gt_ffs_descs_state *state, const char *de
 	}
 	if (fd >= 0)
 		close(fd);
+
+	free(state);
+}
+
+void gt_ffs_cleanup_strs_state(struct gt_ffs_strs_state *state, const char *strs)
+{
+	struct gt_ffs_link *ptr, *next, *next_str, *l;
+	struct gt_ffs_lang *lang;
+	int fd = -1;
+
+	if (state->modified) {
+		fd = open(strs, O_WRONLY | O_TRUNC | O_CREAT);
+		if (fd < 0)
+			fprintf(stderr, "Cannot write strings!\n");
+	}
+
+	if (fd >= 0) {
+		uint32_t v;
+
+		v = htole32(FUNCTIONFS_STRINGS_MAGIC);
+		write(fd, &v, sizeof(v));
+		v = htole32(gt_ffs_get_strings_length(state));
+		write(fd, &v, sizeof(v));
+		v = htole32(state->str_count);
+		write(fd, &v, sizeof(v));
+		v = htole32(state->lang_count);
+		write(fd, &v, sizeof(v));
+	}
+
+	ptr = state->langs;
+	while (ptr) {
+		uint8_t v;
+		uint16_t v16;
+
+		lang = ptr->data;
+		if (fd >= 0) {
+			v16 = htole16(lang->code);
+			write(fd, &v16, sizeof(v16));
+		}
+
+		l = lang->strs;
+		while (l) {
+			if (fd >= 0) {
+				write(fd, l->data, strlen(l->data));
+				v = 0; /* '\0' */
+				write(fd, &v, 1);
+			}
+			free(l->data);
+			next_str = l->next;
+			free(l);
+			l = next_str;
+		}
+
+		free(lang);
+		next = ptr->next;
+		free(ptr);
+		ptr = next;
+	}
 
 	free(state);
 }

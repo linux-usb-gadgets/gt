@@ -40,7 +40,16 @@ struct gt_ffs_descs_state {
 	bool modified;
 };
 
+struct gt_ffs_strs_state {
+	struct gt_ffs_link *langs;
+	uint32_t str_count;
+	uint32_t lang_count;
+	bool modified;
+};
+
 struct gt_ffs_descs_state *gt_ffs_build_descs_state(const char *descs);
+struct gt_ffs_strs_state *gt_ffs_build_strs_state(const char *strs);
 void gt_ffs_cleanup_descs_state(struct gt_ffs_descs_state *state, const char *descs);
+void gt_ffs_cleanup_strs_state(struct gt_ffs_strs_state *state, const char *strs);
 
 #endif // __GADGET_TOOL_FFS_FFS_STATE_H__
