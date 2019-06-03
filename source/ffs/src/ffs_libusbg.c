@@ -468,6 +468,123 @@ static int descriptors_load_state(config_setting_t *cfg_root, struct gt_ffs_desc
 
 	return 0;
 }
+
+static int language_load_state(config_setting_t *language, struct gt_ffs_strs_state *state)
+{
+	struct gt_ffs_language_create_data ldt = { 0, 0 };
+	config_setting_t *s_info;
+	int count, i, ret;
+	bool strs_found = false, code_found = false;
+
+	count = config_setting_length(language);
+	if (count < 1)
+		return -1;
+
+	for (i = 0; i < count; ++i) {
+		config_setting_t *l_field;
+		const char *name;
+
+		l_field = config_setting_get_elem(language, i);
+		name = config_setting_name(l_field);
+
+		if (config_setting_is_list(l_field)) {
+			if (streq(name, "strs")) {
+				if (strs_found)
+					DUPLICATE_SETTING(name, l_field);
+				strs_found = true;
+				continue;
+			} else
+				UNKNOWN_SETTING(name, l_field);
+		} else if (config_setting_is_number(l_field)) {
+			if (!streq(name, "code"))
+				UNKNOWN_SETTING(name, l_field);
+			else if (code_found)
+				DUPLICATE_SETTING(name, l_field);
+			else
+				code_found = true;
+		} else
+			INCORRECT_SETTING(name, l_field);
+		ldt.code = config_setting_get_int(l_field);
+	}
+	ldt.state = state;
+	ret = language_create_func(&ldt);
+	state->modified = false;
+	if (ret != 0)
+		return -1;
+
+	if (!strs_found)
+		return 0;
+
+	s_info = config_setting_lookup(language, "strs");
+	count = config_setting_length(s_info);
+	for (i = 0; i < count; ++i) {
+		struct gt_ffs_string_create_data sdt = { 0, 0, NULL };
+		config_setting_t *str;
+
+		str = config_setting_get_elem(s_info, i);
+		if (!config_setting_is_scalar(str))
+			INCORRECT_SETTING("(string expected)", str);
+
+		sdt.str = strdup(config_setting_get_string(str));
+		if (sdt.str == NULL)
+			return -1;
+
+		sdt.state = state;
+		sdt.lang = ldt.code;
+		ret = string_create_func(&sdt);
+		state->modified = false;
+		free(sdt.str);
+		if (ret != 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+static int strings_load_state(config_setting_t *cfg_root, struct gt_ffs_strs_state *state)
+{
+	int count, i, j;
+	bool l_found = false;
+	config_setting_t *l_info;
+
+	count = config_setting_length(cfg_root);
+	if (count < 1)
+		return -1;
+
+	for (i = 0; i < count; ++i) {
+		const char *l_name;
+		int l_count;
+
+		l_info = config_setting_get_elem(cfg_root, i);
+		l_name = config_setting_name(l_info);
+
+		if (!config_setting_is_list(l_info))
+			INCORRECT_SETTING(l_name, l_info);
+
+		if (!(streq(l_name, "languages")))
+			UNKNOWN_SETTING(l_name, l_info);
+
+		if (l_found)
+			DUPLICATE_SETTING(l_name, l_info);
+		l_found = true;
+
+		l_count = config_setting_length(l_info);
+		for (j = 0; j < l_count; ++j) {
+			config_setting_t *language;
+
+			language = config_setting_get_elem(l_info, j);
+
+			if (!config_setting_is_group(language))
+				INCORRECT_SETTING("(language description expected)", language);
+
+			if (language_load_state(language, state))
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
 #undef DUPLICATE_SETTING
 #undef INCORRECT_SETTING
 #undef UNKNOWN_SETTING
@@ -555,10 +672,93 @@ out:
 	return ret;
 }
 
+static int strings_load_func(void *data)
+{
+	FILE *fp = NULL;
+	config_t cfg;
+	struct gt_ffs_strings_load_data *dt;
+	const char *filename = NULL;
+	const char **ptr;
+	struct stat st;
+	char buf[PATH_MAX];
+	int ret;
+
+	dt = (struct gt_ffs_strings_load_data *)data;
+
+	if (dt->opts & GT_STDIN) {
+		fp = stdin;
+	} else if (dt->file) {
+		filename = dt->file;
+	} else if (dt->path) {
+		ret = snprintf(buf, sizeof(buf), "%s/%s", dt->path, dt->name);
+		if (ret >= sizeof(buf)) {
+			fprintf(stderr, "path too long\n");
+			return -1;
+		}
+
+		filename = buf;
+	} else {
+		if (gt_settings.lookup_path != NULL) {
+			ptr = gt_settings.lookup_path;
+			while (*ptr) {
+				ret = snprintf(buf, sizeof(buf), "%s/%s", *ptr, dt->name);
+				if (ret >= sizeof(buf)) {
+					fprintf(stderr, "path too long\n");
+					return -1;
+				}
+
+				if (stat(buf, &st) == 0) {
+					filename = buf;
+					break;
+				}
+
+				ptr++;
+			}
+		}
+
+		/* use current directory as path */
+		if (filename == NULL && stat(dt->name, &st) == 0)
+			filename = dt->name;
+	}
+
+	if (filename == NULL && fp == NULL) {
+		fprintf(stderr, "Could not find matching strings file.\n");
+		return -1;
+	}
+
+	if (fp == NULL) {
+		fp = fopen(filename, "r");
+		if (fp == NULL) {
+			perror("Error opening file");
+			return -1;
+		}
+	}
+
+	config_init(&cfg);
+	ret = config_read(&cfg, fp);
+	if (ret == CONFIG_FALSE) {
+		fprintf(stderr, "%d:%s\n",
+			config_error_line(&cfg), config_error_text(&cfg));
+		goto out;
+	}
+
+	ret = strings_load_state(config_root_setting(&cfg), dt->state);
+	if (ret == 0)
+		dt->state->modified = true;
+	config_destroy(&cfg);
+
+out:
+	if (fp != stdin)
+		fclose(fp);
+
+	return ret;
+}
+
 struct gt_ffs_backend gt_ffs_backend_libusbg = {
 	.interface_create = interface_create_func,
 	.endpoint_create = endpoint_create_func,
 	.language_create = language_create_func,
 	.string_create = string_create_func,
 	.descriptors_load = descriptors_load_func,
+	.strings_load = strings_load_func,
 };

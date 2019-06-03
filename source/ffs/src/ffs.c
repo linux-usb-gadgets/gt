@@ -75,6 +75,13 @@ static int gt_ffs_descriptors_help(void *data)
 	return -1;
 }
 
+static int gt_ffs_strings_help(void *data)
+{
+	printf("FFS strings help func. Not implemented yet.\n");
+
+	return -1;
+}
+
 static void gt_ffs_interface_create_destructor(void *data)
 {
 	struct gt_ffs_interface_create_data *dt;
@@ -862,6 +869,117 @@ const Command *gt_ffs_descriptors_get_children(const Command *cmd)
 	return commands;
 }
 
+static void gt_ffs_strings_load_destructor(void *data)
+{
+	struct gt_ffs_strings_load_data *dt;
+
+	if (data == NULL)
+		return;
+
+	dt = (struct gt_ffs_strings_load_data *)data;
+	if (dt->state != NULL)
+		gt_ffs_cleanup_strs_state(dt->state, dt->state_file);
+
+	free(dt);
+}
+
+static int gt_ffs_strings_load_help(void *data)
+{
+	printf("FFS strings load help func. Not implemented yet.\n");
+
+	return -1;
+}
+
+static void gt_parse_ffs_strings_load(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_ffs_strings_load_data *dt;
+	int c;
+	struct option opts[] = {
+		{"file", required_argument, 0, 1},
+		{"stdin", no_argument, 0, 2},
+		{"path", required_argument, 0, 3},
+		{"state", required_argument, 0, 4},
+		{"help", no_argument, 0, 'h'},
+		{0, 0, 0, 0}
+	};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	argv--;
+	argc++;
+	dt->state_file = gt_settings.default_ffs_descs;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "h", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 'o':
+			dt->opts |= GT_OFF;
+			break;
+		case 1:
+			if (dt->path || dt->opts & GT_STDIN)
+				goto out;
+			dt->file = optarg;
+			break;
+		case 2:
+			if (dt->path || dt->file)
+				goto out;
+			dt->opts |= GT_STDIN;
+			break;
+		case 3:
+			if (dt->file || dt->opts & GT_STDIN)
+				goto out;
+			dt->path = optarg;
+			break;
+		case 4:
+			dt->state_file = optarg;
+			break;
+		case 'h':
+			goto out;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	if (dt->file || dt->opts & GT_STDIN) {
+		/* no more arguments allowed */
+		if (optind != argc)
+			goto out;
+	} else {
+		/* exactly one argument expected */
+		if (optind + 1 != argc)
+			goto out;
+		dt->name = argv[optind++];
+	}
+
+	dt->state = gt_ffs_build_strs_state(dt->state_file);
+	if (dt->state == NULL)
+		goto out;
+
+	executable_command_set(exec, GET_EXECUTABLE(strings_load),
+				(void *)dt, gt_ffs_strings_load_destructor);
+
+	return;
+out:
+	gt_ffs_strings_load_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
+const Command *gt_ffs_strings_get_children(const Command *cmd)
+{
+	static Command commands[] = {
+		{"load", NEXT, gt_parse_ffs_strings_load, NULL, gt_ffs_strings_load_help},
+		CMD_LIST_END
+	};
+
+	return commands;
+}
+
 const Command *gt_ffs_get_children(const Command *cmd)
 {
 	static Command commands[] = {
@@ -870,6 +988,7 @@ const Command *gt_ffs_get_children(const Command *cmd)
 		{"language", NEXT, command_parse, gt_ffs_language_get_children, gt_ffs_language_help},
 		{"string", NEXT, command_parse, gt_ffs_string_get_children, gt_ffs_string_help},
 		{"descriptors", NEXT, command_parse, gt_ffs_descriptors_get_children, gt_ffs_descriptors_help},
+		{"strings", NEXT, command_parse, gt_ffs_strings_get_children, gt_ffs_strings_help},
 		CMD_LIST_END
 	};
 
