@@ -23,6 +23,7 @@
 
 struct gt_ffs_backend {
 	int (*interface_create)(void *);
+	int (*endpoint_create)(void *);
 };
 
 enum {
@@ -55,7 +56,36 @@ struct find_interface_attr {
 	bool str_idx_found;
 };
 
+enum {
+	ISOC = 1,
+	BULK,
+	INTR,
+};
+
+struct gt_ffs_endpoint_create_data {
+	int opts;
+	unsigned long int speed;
+	unsigned long int number;
+	unsigned long int address;
+	unsigned long int type;
+	unsigned long int max;
+	unsigned long int interval;
+	struct gt_ffs_descs_state *state;
+	const char *state_file;
+};
+
+struct find_endpoint_attr {
+	bool speed_found;
+	bool number_found;
+	bool address_found;
+	bool type_found;
+	bool max_found;
+	bool interval_found;
+};
+
 unsigned long int *find_interface_attr(struct gt_ffs_interface_create_data *dt, const char *name, struct find_interface_attr *f);
+
+unsigned long int *find_endpoint_attr(struct gt_ffs_endpoint_create_data *dt, const char *name, struct find_endpoint_attr *f);
 
 /**
  * @brief Gets the next possible commands after config

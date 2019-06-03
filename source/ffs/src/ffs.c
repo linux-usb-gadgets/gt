@@ -247,6 +247,20 @@ const Command *gt_ffs_interface_get_children(const Command *cmd)
 	return commands;
 }
 
+static void gt_ffs_endpoint_create_destructor(void *data)
+{
+	struct gt_ffs_endpoint_create_data *dt;
+
+	if (data == NULL)
+		return;
+
+	dt = (struct gt_ffs_endpoint_create_data *)data;
+	if (dt->state != NULL)
+		gt_ffs_cleanup_descs_state(dt->state, dt->state_file);
+
+	free(dt);
+}
+
 static int gt_ffs_endpoint_create_help(void *data)
 {
 	printf("FFS endpoint create help func. Not implemented yet.\n");
@@ -254,10 +268,205 @@ static int gt_ffs_endpoint_create_help(void *data)
 	return -1;
 }
 
+unsigned long int *find_endpoint_attr(struct gt_ffs_endpoint_create_data *dt, const char *name, struct find_endpoint_attr *f)
+{
+	if (streq(name, "speed")) {
+		f->speed_found = true;
+		return &dt->speed;
+	} else if (streq(name, "number")){
+		f->number_found = true;
+		return &dt->number;
+	} else if (streq(name, "address")) {
+		f->address_found = true;
+		return &dt->address;
+	} else if (streq(name, "type")) {
+		f->type_found = true;
+		return &dt->type;
+	} else if (streq(name, "max")) {
+		f->max_found = true;
+		return &dt->max;
+	} else if (streq(name, "interval")) {
+		f->interval_found = true;
+		return &dt->interval;
+	}
+
+	return NULL;
+}
+
+static int gt_parse_ffs_endpoint_create_attrs(struct gt_setting *attrs, struct gt_ffs_endpoint_create_data *dt)
+{
+	struct gt_setting *setting;
+	struct find_endpoint_attr f = { false, false, false, false, false, false };
+
+	for (setting = attrs; setting->variable; ++setting) {
+		unsigned long int *field;
+		unsigned long int val;
+		char *endptr = NULL;
+
+		field = find_endpoint_attr(dt, setting->variable, &f);
+		if (field == NULL) {
+			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
+			return -1;
+		}
+
+		errno = 0;
+		if (streq(setting->variable, "speed")) {
+			char buf[3] = { '\0'};
+			if (strlen(setting->value) != 2) {
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+			buf[0] = toupper(setting->value[0]);
+			buf[1] = toupper(setting->value[1]);
+			if (streq(buf, "LS"))
+				val = LS;
+			else if (streq(buf, "FS"))
+				val = FS;
+			else if (streq(buf, "HS"))
+				val = HS;
+			else if (streq(buf, "SS"))
+				val = SS;
+			else {
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+		} else if (streq(setting->variable, "type")) {
+			char buf[5] = { '\0'};
+			unsigned char c;
+			if (strlen(setting->value) != 4) {
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+			for (c = 0; c < 4; ++c)
+				buf[c] = toupper(setting->value[c]);
+			if (streq(buf, "BULK"))
+				val = BULK;
+			else if (streq(buf, "ISOC"))
+				val = ISOC;
+			else if (streq(buf, "INTR"))
+				val = INTR;
+			else {
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+		} else { /* number, address, max, interval */
+			val = strtoul(setting->value, &endptr, 0);
+			if (errno
+			    || *setting->value == 0
+			    || (endptr && *endptr != 0)
+			    || !(val <= (streq(setting->variable, "max") ? UINT16_MAX : UINT8_MAX))) {
+
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+		}
+		*field = val;
+	}
+
+	if (!f.speed_found) {
+		fprintf(stderr, "Endpoint speed=<ls|fs|hs|ss> missing\n");
+		return -1;
+	}
+
+	if (!f.number_found) {
+		fprintf(stderr, "Number of associated interface missing\n");
+		return -1;
+	}
+
+	if (!f.address_found) {
+		fprintf(stderr, "Endpoint address=<val> missing\n");
+		return -1;
+	}
+
+	if (!f.type_found) {
+		fprintf(stderr, "Endpoint type=<bulk|int|iso> missing\n");
+		return -1;
+	}
+
+	if (!f.max_found) {
+		fprintf(stderr, "Endpoint max=<max packet size> missing\n");
+		return -1;
+	}
+
+	if (!f.interval_found) {
+		fprintf(stderr, "Endpoint interval=<val> missing\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void gt_parse_ffs_endpoint_create(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_ffs_endpoint_create_data *dt;
+	struct gt_setting *attrs;
+	int c;
+	struct option opts[] = {
+		{"state", required_argument, 0, 1},
+		{"help", no_argument, 0, 'h'},
+		{0, 0, 0, 0}
+	};
+
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	argv--;
+	argc++;
+	dt->state_file = gt_settings.default_ffs_descs;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "h", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 1:
+			dt->state_file = optarg;
+			break;
+		case 'h':
+			goto out;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	/* speed=ls|fs|hs|ss, address, type=bulk|int|iso, max, interval - all mandatory */
+	if (argc - optind < 5)
+		goto out;
+
+	c = gt_parse_setting_list(&attrs, argc - optind, argv + optind);
+	if (c < 0)
+		goto out;
+
+	c = gt_parse_ffs_endpoint_create_attrs(attrs, dt);
+	if (c < 0)
+		goto out;
+
+	dt->state = gt_ffs_build_descs_state(dt->state_file);
+	if (dt->state == NULL)
+		goto out;
+
+	executable_command_set(exec, GET_EXECUTABLE(endpoint_create),
+				(void *)dt, gt_ffs_endpoint_create_destructor);
+
+	return;
+out:
+	gt_ffs_endpoint_create_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *gt_ffs_endpoint_get_children(const Command *cmd)
 {
 	static Command commands[] = {
-		{"create", NEXT, NULL, NULL, gt_ffs_endpoint_create_help},
+		{"create", NEXT, gt_parse_ffs_endpoint_create, NULL, gt_ffs_endpoint_create_help},
 		CMD_LIST_END
 	};
 
