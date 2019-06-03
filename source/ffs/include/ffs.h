@@ -17,6 +17,7 @@
 #ifndef __GADGET_TOOL_FFS_FFS_H__
 #define __GADGET_TOOL_FFS_FFS_H__
 
+#include <stdint.h>
 #include "command.h"
 
 struct gt_ffs_backend {

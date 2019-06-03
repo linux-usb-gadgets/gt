@@ -3,6 +3,7 @@ INCLUDE_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
 SET( FFS_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/ffs.c
+	${CMAKE_CURRENT_SOURCE_DIR}/src/ffs_state.c
 	${CMAKE_CURRENT_SOURCE_DIR}/src/ffs_libusbg.c
 	${CMAKE_CURRENT_SOURCE_DIR}/src/ffs_not_implemented.c
 	)
