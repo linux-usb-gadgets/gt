@@ -196,8 +196,68 @@ out_data:
 	return -1;
 }
 
+static int string_create_func(void *data)
+{
+	struct gt_ffs_strs_state *state;
+	struct gt_ffs_string_create_data *dt;
+	struct gt_ffs_link *item, **ptr;
+	struct gt_ffs_lang *lang;
+	char *string;
+
+	dt = (struct gt_ffs_string_create_data *)data;
+	state = dt->state;
+
+	ptr = &state->langs;
+	while (*ptr) {
+		lang = (*ptr)->data;
+		if (lang->code == dt->lang)
+			break;
+		ptr = &(*ptr)->next;
+	}
+	if (*ptr == NULL) {
+		fprintf(stderr, "Cannot find specified language!\n");
+		return -1;
+	}
+	if ((*ptr)->next != NULL) {
+		fprintf(stderr, "Only last language can be modified!\n");
+		return -1;
+	}
+	/* The first language defines the number of strings */
+	if (state->lang_count > 1 && lang->count >= state->str_count) {
+		fprintf(stderr, "Cannot add string! Language full.\n");
+		return -1;
+	}
+
+	ptr = &lang->strs;
+	while (*ptr)
+		ptr = &(*ptr)->next;
+
+	item = zalloc(sizeof(*item));
+	if (item == NULL)
+		return -1;
+
+	string = strdup(dt->str);
+	if (string == NULL)
+		goto out_data;
+
+	item->data = string;
+	*ptr = item;
+
+	++lang->count;
+	/* The first language defines the number of strings */
+	if (state->lang_count == 1)
+		++state->str_count;
+	state->modified = true;
+
+	return 0;
+out_data:
+	free(item);
+	return -1;
+}
+
 struct gt_ffs_backend gt_ffs_backend_libusbg = {
 	.interface_create = interface_create_func,
 	.endpoint_create = endpoint_create_func,
 	.language_create = language_create_func,
+	.string_create = string_create_func,
 };

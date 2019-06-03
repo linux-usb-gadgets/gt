@@ -602,6 +602,21 @@ const Command *gt_ffs_language_get_children(const Command *cmd)
 	return commands;
 }
 
+static void gt_ffs_string_create_destructor(void *data)
+{
+	struct gt_ffs_string_create_data *dt;
+
+	if (data == NULL)
+		return;
+
+	dt = (struct gt_ffs_string_create_data *)data;
+	if (dt->state != NULL)
+		gt_ffs_cleanup_strs_state(dt->state, dt->state_file);
+
+	free(dt->str);
+	free(dt);
+}
+
 static int gt_ffs_string_create_help(void *data)
 {
 	printf("FFS string create help func. Not implemented yet.\n");
@@ -609,10 +624,120 @@ static int gt_ffs_string_create_help(void *data)
 	return -1;
 }
 
+static int gt_parse_ffs_string_create_attrs(struct gt_setting *attrs, struct gt_ffs_string_create_data *dt)
+{
+	struct gt_setting *setting;
+	bool lang_found = false, str_found = false;
+
+	for (setting = attrs; setting->variable; ++setting) {
+		unsigned long int val;
+		char *endptr = NULL;
+
+		if (streq(setting->variable, "str")) {
+			dt->str = strdup(setting->value);
+			if (dt->str == NULL) {
+				fprintf(stderr, "Cannot allocate memory for %s\n", setting->value);
+				return -1;
+			}
+			str_found = true;
+		} else if (streq(setting->variable, "lang")) {
+			errno = 0;
+			val = strtoul(setting->value, &endptr, 0);
+			if (errno
+			    || *setting->value == 0
+			    || (endptr && *endptr != 0)
+			    || !(val <= UINT16_MAX)) {
+
+				fprintf(stderr, "Invalid value '%s' for attribute '%s'\n",
+					setting->value, setting->variable);
+				return -1;
+			}
+			dt->lang = val;
+			lang_found = true;
+		} else {
+			fprintf(stderr, "Unknown attribute passed: %s\n", setting->variable);
+			return -1;
+		}
+	}
+
+	if (!lang_found) {
+		fprintf(stderr, "String lang=<val> missing\n");
+		return -1;
+	}
+
+	if (!str_found) {
+		fprintf(stderr, "String str=<val> missing\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void gt_parse_ffs_string_create(const Command *cmd, int argc, char **argv,
+		ExecutableCommand *exec, void *data)
+{
+	struct gt_ffs_string_create_data *dt;
+	struct gt_setting *attrs;
+	int c;
+	struct option opts[] = {
+		{"state", required_argument, 0, 1},
+		{"help", no_argument, 0, 'h'},
+		{0, 0, 0, 0}
+	};
+
+	dt = zalloc(sizeof(*dt));
+	if (dt == NULL)
+		goto out;
+
+	argv--;
+	argc++;
+	dt->state_file = gt_settings.default_ffs_descs;
+	while (1) {
+		int opt_index = 0;
+		c = getopt_long(argc, argv, "h", opts, &opt_index);
+		if (c == -1)
+			break;
+		switch (c) {
+		case 1:
+			dt->state_file = optarg;
+			break;
+		case 'h':
+			goto out;
+			break;
+		default:
+			goto out;
+		}
+	}
+
+	/* code=val str=string mandatory */
+	if (argc - optind < 2)
+		goto out;
+
+	c = gt_parse_setting_list(&attrs, argc - optind, argv + optind);
+	if (c < 0)
+		goto out;
+
+	c = gt_parse_ffs_string_create_attrs(attrs, dt);
+	if (c < 0)
+		goto out;
+
+	dt->state = gt_ffs_build_strs_state(dt->state_file);
+	if (dt->state == NULL)
+		goto out;
+
+	executable_command_set(exec, GET_EXECUTABLE(string_create),
+				(void *)dt, gt_ffs_string_create_destructor);
+
+	return;
+out:
+	gt_ffs_string_create_destructor((void *)dt);
+	executable_command_set(exec, cmd->printHelp, data, NULL);
+}
+
 const Command *gt_ffs_string_get_children(const Command *cmd)
 {
 	static Command commands[] = {
-		{"create", NEXT, NULL, NULL, gt_ffs_string_create_help},
+		{"create", NEXT, gt_parse_ffs_string_create, NULL, gt_ffs_string_create_help},
 		CMD_LIST_END
 	};
 
