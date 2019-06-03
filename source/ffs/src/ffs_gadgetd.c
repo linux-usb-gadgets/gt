@@ -20,4 +20,5 @@
 struct gt_ffs_backend gt_ffs_backend_gadgetd = {
 	.interface_create = NULL,
 	.endpoint_create = NULL,
+	.language_create = NULL,
 };

@@ -24,6 +24,7 @@
 struct gt_ffs_backend {
 	int (*interface_create)(void *);
 	int (*endpoint_create)(void *);
+	int (*language_create)(void *);
 };
 
 enum {
@@ -71,6 +72,13 @@ struct gt_ffs_endpoint_create_data {
 	unsigned long int max;
 	unsigned long int interval;
 	struct gt_ffs_descs_state *state;
+	const char *state_file;
+};
+
+struct gt_ffs_language_create_data {
+	int opts;
+	unsigned long int code;
+	struct gt_ffs_strs_state *state;
 	const char *state_file;
 };
 

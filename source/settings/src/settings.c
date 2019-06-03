@@ -38,6 +38,7 @@ struct gt_setting_list gt_settings = {
 	.default_template_path = "/etc/gt/templates",
 	.default_gadget = "g1",
 	.default_ffs_descs = "/etc/gt/templates/descs",
+	.default_ffs_strs = "/etc/gt/templates/strs",
 };
 
 static int gt_check_settings_var(const char *name)
@@ -49,6 +50,7 @@ static int gt_check_settings_var(const char *name)
 		"default-template-path",
 		"default-gadget",
 		"default-ffs-descs",
+		"default-ffs-strs",
 		NULL
 	};
 	int i = 0;

@@ -154,7 +154,50 @@ out_data:
 	return -1;
 }
 
+static int language_create_func(void *data)
+{
+	struct gt_ffs_strs_state *state;
+	struct gt_ffs_language_create_data *dt;
+	struct gt_ffs_lang *dt_new;
+	struct gt_ffs_link *item, **ptr;
+
+	dt = (struct gt_ffs_language_create_data *)data;
+	state = dt->state;
+
+	ptr = &state->langs;
+	while (*ptr) {
+		struct gt_ffs_lang *l = (*ptr)->data;
+		if (l->code == dt->code) {
+			fprintf(stderr, "Duplicate language detected!\n");
+			return -1;
+		}
+		ptr = &(*ptr)->next;
+	}
+
+	item = zalloc(sizeof(*item));
+	if (item == NULL)
+		return -1;
+
+	dt_new = zalloc(sizeof(*dt_new));
+	if (dt_new == NULL)
+		goto out_data;
+
+	dt_new->code = dt->code;
+	item->data = dt_new;
+
+	item->next = *ptr;
+	*ptr = item;
+	++state->lang_count;
+	state->modified = true;
+
+	return 0;
+out_data:
+	free(item);
+	return -1;
+}
+
 struct gt_ffs_backend gt_ffs_backend_libusbg = {
 	.interface_create = interface_create_func,
 	.endpoint_create = endpoint_create_func,
+	.language_create = language_create_func,
 };
