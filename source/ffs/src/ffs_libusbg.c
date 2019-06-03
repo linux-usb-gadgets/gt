@@ -18,11 +18,16 @@
 #include <string.h>
 #include <linux/usb/ch9.h>
 #include <usbg/usbg.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <libconfig.h>
 
 #include "common.h"
 #include "backend.h"
 #include "ffs.h"
 #include "ffs_state.h"
+#include "settings.h"
 
 static int interface_create_func(void *data)
 {
@@ -255,9 +260,305 @@ out_data:
 	return -1;
 }
 
+static inline bool interface_attrs_equal(struct find_interface_attr *f1, struct find_interface_attr *f2)
+{
+	return f1->number_found == f2->number_found &&
+		f1->cls_found == f2->cls_found &&
+		f1->subcls_found == f2->subcls_found &&
+		f1->protocol_found == f2->protocol_found &&
+		f1->str_idx_found == f2->str_idx_found;
+}
+
+static inline bool endpoint_attrs_equal(struct find_endpoint_attr *f1, struct find_endpoint_attr *f2)
+{
+	return f1->number_found == f2->number_found &&
+		f1->address_found == f2->address_found &&
+		f1->type_found == f2->type_found &&
+		f1->max_found == f2->max_found &&
+		f1->interval_found == f2->interval_found;
+}
+
+#define MSG_AND_EXIT(format, args...)				\
+	do {							\
+		fprintf(stderr, format, ##args);		\
+		return -1;					\
+	} while (0)
+
+#define UNKNOWN_SETTING(name, info)				\
+	MSG_AND_EXIT("Uknown setting %s, line %d!\n", name,	\
+			config_setting_source_line(info))
+
+#define INCORRECT_SETTING(name, info)				\
+	MSG_AND_EXIT("Incorrect setting %s, line %d!\n", name,	\
+			config_setting_source_line(info))
+
+#define DUPLICATE_SETTING(name, info)				\
+	MSG_AND_EXIT("Duplicate setting %s, line %d\n", name,	\
+			config_setting_source_line(info))
+
+static int interface_load_state(int speed, int number, struct config_setting_t *i_info, struct gt_ffs_descs_state *state)
+{
+	struct gt_ffs_interface_create_data idt = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	config_setting_t *iface, *e_info, *endpoint;
+	int iface_count, eps_count, endpoint_count, i, j, ret;
+	bool endpoints_found = false;
+
+	iface = config_setting_get_elem(i_info, number);
+	if (!config_setting_is_group(iface))
+		INCORRECT_SETTING("(expected interface description)", iface);
+
+	idt.speed = speed;
+	iface_count = config_setting_length(iface);
+	for (i = 0; i < iface_count; ++i) {
+		config_setting_t *i_field;
+		const char *name;
+		unsigned long int *field;
+		struct find_interface_attr fi = {
+			false, false, false, false, false, false, false
+		};
+		struct find_interface_attr fi_tmp = {
+			false, false, false, false, false, false, false
+		};
+
+		i_field = config_setting_get_elem(iface, i);
+		name = config_setting_name(i_field);
+
+		if (config_setting_is_list(i_field)) {
+			if (streq(name, "endpoints")) {
+				if (endpoints_found)
+					DUPLICATE_SETTING(name, i_field);
+				endpoints_found = true;
+				continue;
+			} else
+				UNKNOWN_SETTING(name, i_field);
+		} else if (config_setting_is_number(i_field)) {
+			if (streq(name, "speed"))
+				UNKNOWN_SETTING(name, i_field);
+		} else
+			INCORRECT_SETTING(name, i_field);
+		fi_tmp = fi;
+		field = find_interface_attr(&idt, name, &fi_tmp);
+		if (field == NULL)
+			UNKNOWN_SETTING(name, i_field);
+		if (interface_attrs_equal(&fi_tmp, &fi))
+			DUPLICATE_SETTING(name, i_field);
+		fi = fi_tmp;
+		*field = config_setting_get_int(i_field);
+	}
+	idt.state = state;
+	ret = interface_create_func(&idt);
+	state->modified = false;
+	if (ret != 0)
+		return -1;
+
+	if (!endpoints_found)
+		return 0;
+
+	e_info = config_setting_lookup(iface, "endpoints");
+	eps_count = config_setting_length(e_info);
+	for (i = 0; i < eps_count; ++i) {
+		struct gt_ffs_endpoint_create_data edt = { 0, 0, 0, 0, 0, 0, 0 };
+		struct find_endpoint_attr fe = {
+			false, false, false, false, false, false
+		};
+		struct find_endpoint_attr fe_tmp = {
+			false, false, false, false, false, false
+		};
+
+		endpoint = config_setting_get_elem(e_info, i);
+		if (!config_setting_is_group(endpoint))
+			INCORRECT_SETTING("(expected endpoint description)", endpoint);
+
+		edt.speed = speed;
+		edt.number = idt.number;
+		endpoint_count = config_setting_length(endpoint);
+		for (j = 0; j < endpoint_count; ++j) {
+			config_setting_t *e_field;
+			const char *name;
+			unsigned long int *field;
+
+			e_field = config_setting_get_elem(endpoint, j);
+			name = config_setting_name(e_field);
+
+			if (!config_setting_is_number(e_field))
+				INCORRECT_SETTING(name, e_field);
+			if (streq(name, "number"))
+				UNKNOWN_SETTING(name, e_field);
+			fe_tmp = fe;
+			field = find_endpoint_attr(&edt, name, &fe_tmp);
+			if (field == NULL)
+				UNKNOWN_SETTING(name, e_field);
+			if (endpoint_attrs_equal(&fe_tmp, &fe))
+				DUPLICATE_SETTING(name, e_field);
+			fe = fe_tmp;
+			*field = config_setting_get_int(e_field);
+		}
+		edt.state = state;
+		ret = endpoint_create_func(&edt);
+		state->modified = false;
+		if (ret != 0)
+			return -1;
+	}
+	return 0;
+}
+
+static int descriptors_load_state(config_setting_t *cfg_root, struct gt_ffs_descs_state *state)
+{
+	int count, i, j, k;
+	char *s_names[] = { "fs", "hs", "ss" };
+	int speeds[] = { FS, HS, SS };
+	bool s_found[] = { false, false, false };
+
+	if (cfg_root == NULL)
+		return -1;
+
+	count = config_setting_length(cfg_root);
+	if (count < 1)
+		return -1;
+
+	for (i = 0; i < count; ++i) {
+		const char *s_name;
+		int s_count, speed;
+		bool i_found = false;
+		config_setting_t *s_info;
+
+		s_info = config_setting_get_elem(cfg_root, i);
+		s_name = config_setting_name(s_info);
+
+		if (!config_setting_is_group(s_info))
+			INCORRECT_SETTING(s_name, s_info);
+
+		if (!(streq(s_name, "fs") || streq(s_name, "hs") || streq(s_name, "ss")))
+			UNKNOWN_SETTING(s_name, s_info);
+
+		for (j = 0; j < ARRAY_SIZE(s_names); ++j)
+			if (streq(s_name, s_names[j])) {
+				if (s_found[j])
+					DUPLICATE_SETTING(s_names[j], s_info);
+				s_found[j] = true;
+				speed = speeds[j];
+				break;
+			}
+
+		s_count = config_setting_length(s_info);
+		for (j = 0; j < s_count; ++j) {
+			const char *i_name;
+			int i_count;
+			config_setting_t *i_info;
+
+			i_info = config_setting_get_elem(s_info, j);
+			i_name = config_setting_name(i_info);
+
+			if (!config_setting_is_list(i_info))
+				INCORRECT_SETTING(i_name, i_info);
+
+			if (!streq(i_name, "interfaces"))
+				UNKNOWN_SETTING(i_name, i_info);
+
+			if (i_found)
+				DUPLICATE_SETTING(i_name, i_info);
+			i_found = true;
+
+			i_count = config_setting_length(i_info);
+			for (k = 0; k < i_count; ++k)
+				if (interface_load_state(speed, k, i_info, state))
+					return -1;
+		}
+	}
+
+	return 0;
+}
+#undef DUPLICATE_SETTING
+#undef INCORRECT_SETTING
+#undef UNKNOWN_SETTING
+#undef MSG_AND_EXIT
+
+static int descriptors_load_func(void *data)
+{
+	FILE *fp = NULL;
+	config_t cfg;
+	struct gt_ffs_descriptors_load_data *dt;
+	const char *filename = NULL;
+	const char **ptr;
+	struct stat st;
+	char buf[PATH_MAX];
+	int ret;
+
+	dt = (struct gt_ffs_descriptors_load_data *)data;
+
+	if (dt->opts & GT_STDIN) {
+		fp = stdin;
+	} else if (dt->file) {
+		filename = dt->file;
+	} else if (dt->path) {
+		ret = snprintf(buf, sizeof(buf), "%s/%s", dt->path, dt->name);
+		if (ret >= sizeof(buf)) {
+			fprintf(stderr, "path too long\n");
+			return -1;
+		}
+
+		filename = buf;
+	} else {
+		if (gt_settings.lookup_path != NULL) {
+			ptr = gt_settings.lookup_path;
+			while (*ptr) {
+				ret = snprintf(buf, sizeof(buf), "%s/%s", *ptr, dt->name);
+				if (ret >= sizeof(buf)) {
+					fprintf(stderr, "path too long\n");
+					return -1;
+				}
+
+				if (stat(buf, &st) == 0) {
+					filename = buf;
+					break;
+				}
+
+				ptr++;
+			}
+		}
+
+		/* use current directory as path */
+		if (filename == NULL && stat(dt->name, &st) == 0)
+			filename = dt->name;
+	}
+
+	if (filename == NULL && fp == NULL) {
+		fprintf(stderr, "Could not find matching descriptors file.\n");
+		return -1;
+	}
+
+	if (fp == NULL) {
+		fp = fopen(filename, "r");
+		if (fp == NULL) {
+			perror("Error opening file");
+			return -1;
+		}
+	}
+
+	config_init(&cfg);
+	ret = config_read(&cfg, fp);
+	if (ret == CONFIG_FALSE) {
+		fprintf(stderr, "%d:%s\n",
+			config_error_line(&cfg), config_error_text(&cfg));
+		goto out;
+	}
+
+	ret = descriptors_load_state(config_root_setting(&cfg), dt->state);
+	if (ret == 0)
+		dt->state->modified = true;
+	config_destroy(&cfg);
+
+out:
+	if (fp != stdin)
+		fclose(fp);
+
+	return ret;
+}
+
 struct gt_ffs_backend gt_ffs_backend_libusbg = {
 	.interface_create = interface_create_func,
 	.endpoint_create = endpoint_create_func,
 	.language_create = language_create_func,
 	.string_create = string_create_func,
+	.descriptors_load = descriptors_load_func,
 };

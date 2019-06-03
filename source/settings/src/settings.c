@@ -322,6 +322,7 @@ int gt_parse_settings(config_t *config)
 	GET_SETTING("configfs-path", configfs_path);
 	GET_SETTING("default-template-path", default_template_path);
 	GET_SETTING("default-gadget", default_gadget);
+	GET_SETTING("default-ffs-descs", default_ffs_descs);
 
 	node = config_setting_get_member(root, "lookup-path");
 	if (node) {

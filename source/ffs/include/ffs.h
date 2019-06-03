@@ -26,6 +26,7 @@ struct gt_ffs_backend {
 	int (*endpoint_create)(void *);
 	int (*language_create)(void *);
 	int (*string_create)(void *);
+	int (*descriptors_load)(void *);
 };
 
 enum {
@@ -89,6 +90,15 @@ struct gt_ffs_string_create_data {
 	char *str;
 	struct gt_ffs_strs_state *state;
 	const char *state_file;
+};
+
+struct gt_ffs_descriptors_load_data {
+	int opts;
+	struct gt_ffs_descs_state *state;
+	const char *state_file;
+	const char *file;
+	const char *path;
+	const char *name;
 };
 
 struct find_endpoint_attr {
