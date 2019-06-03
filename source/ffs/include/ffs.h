@@ -17,11 +17,45 @@
 #ifndef __GADGET_TOOL_FFS_FFS_H__
 #define __GADGET_TOOL_FFS_FFS_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "command.h"
 
 struct gt_ffs_backend {
+	int (*interface_create)(void *);
 };
+
+enum {
+	LS = 0,
+	FS,
+	HS,
+	SS
+};
+
+struct gt_ffs_interface_create_data {
+	int opts;
+	unsigned long int speed;
+	unsigned long int number;
+	unsigned long int eps;
+	unsigned long int cls;
+	unsigned long int subcls;
+	unsigned long int protocol;
+	unsigned long int str_idx;
+	struct gt_ffs_descs_state *state;
+	const char *state_file;
+};
+
+struct find_interface_attr {
+	bool speed_found;
+	bool number_found;
+	bool eps_found;
+	bool cls_found;
+	bool subcls_found;
+	bool protocol_found;
+	bool str_idx_found;
+};
+
+unsigned long int *find_interface_attr(struct gt_ffs_interface_create_data *dt, const char *name, struct find_interface_attr *f);
 
 /**
  * @brief Gets the next possible commands after config

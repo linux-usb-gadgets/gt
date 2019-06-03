@@ -37,6 +37,7 @@ struct gt_setting_list gt_settings = {
 	.lookup_path = _lookup_path,
 	.default_template_path = "/etc/gt/templates",
 	.default_gadget = "g1",
+	.default_ffs_descs = "/etc/gt/templates/descs",
 };
 
 static int gt_check_settings_var(const char *name)
@@ -47,6 +48,7 @@ static int gt_check_settings_var(const char *name)
 		"lookup-path",
 		"default-template-path",
 		"default-gadget",
+		"default-ffs-descs",
 		NULL
 	};
 	int i = 0;

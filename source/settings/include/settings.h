@@ -30,6 +30,7 @@ struct gt_setting_list {
 	const char **lookup_path;
 	const char *default_template_path;
 	const char *default_gadget;
+	const char *default_ffs_descs;
 };
 
 extern struct gt_setting_list gt_settings;

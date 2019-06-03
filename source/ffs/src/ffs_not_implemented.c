@@ -17,5 +17,12 @@
 #include <stdio.h>
 #include "ffs.h"
 
+static int interface_create_func(void *data)
+{
+	printf("gt interface_create called successfully. Not implemented yet.\n");
+	return 0;
+}
+
 struct gt_ffs_backend gt_ffs_backend_not_implemented = {
+	.interface_create = interface_create_func,
 };
