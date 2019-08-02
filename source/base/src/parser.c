@@ -23,6 +23,7 @@
 #include "parser.h"
 #include "command.h"
 #include "udc.h"
+#include "ffs.h"
 #include "gadget.h"
 #include "configuration.h"
 #include "function.h"
@@ -40,6 +41,7 @@ int gt_global_help(void *data)
 {
 	printf("Usage: %s {OBJECT} [COMMAND]\n"
 	       "Object is either implicit (if not specified) or explicit:\n"
+	       "  ffs\n"
 	       "  udc\n"
 	       "  settings\n"
 	       "  config\n"
@@ -65,6 +67,7 @@ int gt_global_help(void *data)
 static inline const Command *gt_get_command_root_children(const Command *cmd)
 {
 	static Command commands[] = {
+		{ "ffs", NEXT, command_parse, gt_ffs_get_children, gt_ffs_help },
 		{ "udc", NEXT, udc_parse, NULL, udc_help_func },
 		{ "settings", NEXT, command_parse, gt_settings_get_children, gt_settings_help },
 		{ "config", NEXT, command_parse, gt_config_get_children, gt_config_help },

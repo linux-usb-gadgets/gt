@@ -69,6 +69,13 @@ of standard gadget configurations and to achieve first goal.
 	Fourth goal is to allow user share their functions and configurations.
 This goal is not so important as third goal but it's a nice feature to allow
 user to share not only whole gadget but also a part of it.
+	The fifth goal is to allow user create descriptors and strings used with
+FunctionFS. While not strictly related to composing a gadget with ConfigFS,
+creating the descriptors and strings is an important step of creating custom
+USB gadget functions on top of FunctionFS. As such, they are a perfect target
+for the Gadget Tool. Initially only interface, endpoint and string descriptors
+support is expected but it would be a nice feature to allow creating many
+types of needed descriptors.
 
 ========================================
 
@@ -412,3 +419,38 @@ Sets given attributes to new values.
 Removes config template with specified name.
 
 	$ gt func template rm <name>
+
+		   === 3.5 FunctionFS descriptors and strings ===
+
+At the moment support for FunctionFS is limited to interface, endpoint and
+string descriptors.
+
+==== 3.5.1 FunctionFS descriptors and strings view, creation and manipulation ====
+
+Creates a FunctionFS interface descriptor:
+
+	$ gt ffs interface create <speed=val> [number=val] [alt=val] \
+		[class=val] [subclass=val] [protocol=val] [str_idx=val]
+
+Creates a FunctionFS endpoint descriptor:
+
+	$ gt ffs endpoint create <speed=val> <number=val> <addr=val> \
+		<type=val> <max=val> <interval=val>
+
+Creates a FunctionFS strings language:
+
+	$ gt ffs language create <code=val>
+
+Creates a FunctionFS string:
+
+	$ gt ffs string create <language=val> <val>
+
+	=== 3.5.2 FunctionFS descriptors and strings template manipulation ===
+
+Loads descriptors from config file and stores in state file:
+
+	$ gt ffs descriptors load [name]
+
+Loads strings from config file and stores in state file:
+
+	$ gt ffs strings load [name]

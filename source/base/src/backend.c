@@ -27,6 +27,7 @@
 #include "gadget.h"
 #include "configuration.h"
 #include "udc.h"
+#include "ffs.h"
 
 struct gt_backend_ctx backend_ctx = {
 #ifdef WITH_GADGETD
@@ -41,6 +42,7 @@ struct gt_backend gt_backend_libusbg = {
 	.gadget = &gt_gadget_backend_libusbg,
 	.config = &gt_config_backend_libusbg,
 	.udc = &gt_udc_backend_libusbg,
+	.ffs = &gt_ffs_backend_libusbg,
 };
 
 #ifdef WITH_GADGETD
@@ -49,6 +51,7 @@ struct gt_backend gt_backend_gadgetd = {
 	.gadget = &gt_gadget_backend_gadgetd,
 	.config = &gt_config_backend_gadgetd,
 	.udc = &gt_udc_backend_gadgetd,
+	.ffs = &gt_ffs_backend_gadgetd,
 };
 #endif
 
@@ -57,6 +60,7 @@ struct gt_backend gt_backend_not_implemented = {
 	.gadget = &gt_gadget_backend_not_implemented,
 	.config = &gt_config_backend_not_implemented,
 	.udc = &gt_udc_backend_not_implemented,
+	.ffs = &gt_ffs_backend_not_implemented,
 };
 
 int gt_backend_init(const char *program_name, enum gt_option_flags flags)
