@@ -296,8 +296,11 @@ int gt_parse_settings(config_t *config)
 		filename = GT_SETTING_PATH;
 
 	ret = config_read_file(config, filename);
-	if (ret == CONFIG_FALSE)
+	if (ret == CONFIG_FALSE) {
+		fprintf(stderr, "Error reading configuration %s\n", filename);
+		fprintf(stderr, "%s:%i: %s\n", config_error_file(config), config_error_line(config), config_error_text(config));
 		return -1;
+	}
 
 	root = config_root_setting(config);
 
