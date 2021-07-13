@@ -55,3 +55,7 @@ Doxyfile
 Debug/
 build/
 
+# Artifacts
+/gt
+/gt-parse-test
+/install_manifest.txt
