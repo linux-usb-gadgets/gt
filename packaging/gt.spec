@@ -13,6 +13,7 @@ BuildRequires:   pkgconfig(glib-2.0)
 BuildRequires:   pkgconfig(libusbgx)
 BuildRequires:   asciidoc
 BuildRequires:   xsltproc
+BuildRequires:   bash-completion
 
 %description
 Gt is a command line tool for USB gadget management through
