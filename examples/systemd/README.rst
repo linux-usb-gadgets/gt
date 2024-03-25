@@ -91,14 +91,14 @@ Udev rule
 .. code-block:: console
 
 	SUBSYSTEM=="udc", ACTION=="add", \
-		 TAG+="systemd", ENV{SYSTEMD_WANTS}+="gt.target"
+		 TAG+="systemd", ENV{SYSTEMD_WANTS}+="usb-gadget.target"
 
 
 The condition for taking the activity is that there is a kernel "add" event
 from the "udc" subsystem, which means a new udc has just been made available.
 The device in question is tagged with "systemd", which makes systemd
 aware of the new device, and SYSTEMD_WANTS is set to the name of the target we
-want to reach if the condition is met.
+want to reach if the condition is met. This is provided by systemd since 242.
 
 Systemd
 =======
@@ -113,7 +113,7 @@ Target unit
 
 The target is a simple target to be reached when the udev rule fires.
 The service unit will use a "WantedBy" dependency to lend itself for being
-managed with systemctl enable/disable.
+managed with systemctl enable/disable. This is provided by systemd since 242.
 
 Service unit
 ------------
@@ -128,13 +128,13 @@ The unit file is named gt@.service and is a template unit.
 	After=sys-kernel-config.mount
 
 	[Service]
-	ExecStart=/bin/gt load %i.scheme %i
+	ExecStart=gt load %i.scheme %i
 	RemainAfterExit=yes
-	ExecStop=/bin/gt rm -rf %i
+	ExecStop=gt rm -rf %i
 	Type=simple
 
 	[Install]
-	WantedBy=gt.target
+	WantedBy=usb-gadget.target
 
 This unit is a template unit, so system administrator is supposed to issue
 
@@ -142,8 +142,8 @@ This unit is a template unit, so system administrator is supposed to issue
 
 	systemctl enable gt@<gadget scheme file basename>
 
-This sets up appropriate symbolic links in gt.target.wants directory, which
-in turn triggers executing the service unit the usual systemd way.
+This sets up appropriate symbolic links in usb-gadget.target.wants directory,
+which in turn triggers executing the service unit the usual systemd way.
 
 The service itself uses gt to load gadget scheme with the name implied from
 the template parameter, name the gadget accordingly and activate it. Upon
@@ -152,7 +152,7 @@ stopping it removes the gadget altogether.
 gt installation and configuration
 =================================
 
-By default gt binary is installed in /bin, and its configuration file is
+By default the gt binary loads its configuration from a config file at path
 /etc/gt/gt.conf. The configuration file contains a few directives. The most
 important ones in the context of gt integration with systemd are "lookup-path"
 and "default-template-path", which must not be commented in order to take
@@ -296,8 +296,8 @@ Discussion
 ==========
 
 This document assumes there is only one UDC available in the gadget system.
-If there are more, the first one to appear will cause reaching the gt.target,
-so the first UDC becoming available will be used for running the gadget.service
+The first UDC that becomes available will lead to reaching usb-gadget.target,
+so the first UDC becoming available will be used for running the gadget service
 on it. This might or might not be what you want.
 
 This document does not address the case where actual USB device functionality
