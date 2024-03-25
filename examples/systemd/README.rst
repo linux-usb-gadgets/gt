@@ -128,9 +128,9 @@ The unit file is named gt@.service and is a template unit.
 	After=sys-kernel-config.mount
 
 	[Service]
-	ExecStart=/bin/gt load %i.scheme %i
+	ExecStart=gt load %i.scheme %i
 	RemainAfterExit=yes
-	ExecStop=/bin/gt rm -rf %i
+	ExecStop=gt rm -rf %i
 	Type=simple
 
 	[Install]
@@ -152,7 +152,7 @@ stopping it removes the gadget altogether.
 gt installation and configuration
 =================================
 
-By default gt binary is installed in /bin, and its configuration file is
+By default the gt binary loads its configuration from a config file at path
 /etc/gt/gt.conf. The configuration file contains a few directives. The most
 important ones in the context of gt integration with systemd are "lookup-path"
 and "default-template-path", which must not be commented in order to take

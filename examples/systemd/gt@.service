@@ -8,9 +8,9 @@ Requires=sys-kernel-config.mount
 After=sys-kernel-config.mount
 
 [Service]
-ExecStart=/bin/gt load %i.scheme %i
+ExecStart=gt load %i.scheme %i
 RemainAfterExit=yes
-ExecStop=/bin/gt rm -rf %i
+ExecStop=gt rm -rf %i
 Type=simple
 
 [Install]
