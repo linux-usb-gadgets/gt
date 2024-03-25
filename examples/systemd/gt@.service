@@ -14,4 +14,4 @@ ExecStop=gt rm -rf %i
 Type=simple
 
 [Install]
-WantedBy=gt.target
+WantedBy=usb-gadget.target
