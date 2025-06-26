@@ -5,4 +5,6 @@ SET( SETTINGS_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/settings.c
 	)
 
+set_source_files_properties( ${SETTINGS_SRC} PROPERTIES COMPILE_DEFINITIONS GT_SETTING_PATH="${GT_SETTING_PATH}" )
+
 add_library(settings STATIC ${SETTINGS_SRC} )
